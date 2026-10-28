@@ -1,0 +1,461 @@
+{
+  "source": "fixtures/synthetic_parcels (hand-written test data, not from video)",
+  "outcomes": [
+    "returns",
+    "heavy_cart",
+    "fragile_shelf",
+    "standard_bin"
+  ],
+  "attribute_glossary": [
+    {
+      "name": "material",
+      "meaning": "package material"
+    },
+    {
+      "name": "label",
+      "meaning": "special handling sticker"
+    },
+    {
+      "name": "damaged",
+      "meaning": "visible damage"
+    },
+    {
+      "name": "weight_kg",
+      "meaning": "weight shown on scale"
+    }
+  ],
+  "events": [
+    {
+      "index": 0,
+      "time_start": 1,
+      "time_end": 4,
+      "item": "brown box",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "2"
+        }
+      ],
+      "outcome": "standard_bin",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 1,
+      "time_start": 5,
+      "time_end": 8,
+      "item": "padded mailer",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "plastic"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "0.4"
+        }
+      ],
+      "outcome": "standard_bin",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 2,
+      "time_start": 9,
+      "time_end": 12,
+      "item": "box with dented corner",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "yes"
+        },
+        {
+          "name": "weight_kg",
+          "value": "3"
+        }
+      ],
+      "outcome": "returns",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 3,
+      "time_start": 13,
+      "time_end": 16,
+      "item": "large box",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "8"
+        }
+      ],
+      "outcome": "heavy_cart",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 4,
+      "time_start": 17,
+      "time_end": 20,
+      "item": "box with red sticker",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "fragile"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "1.5"
+        }
+      ],
+      "outcome": "fragile_shelf",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 5,
+      "time_start": 21,
+      "time_end": 24,
+      "item": "small box",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "1"
+        }
+      ],
+      "outcome": "standard_bin",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 6,
+      "time_start": 25,
+      "time_end": 28,
+      "item": "heavy crate",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "wood"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "12"
+        }
+      ],
+      "outcome": "heavy_cart",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 7,
+      "time_start": 29,
+      "time_end": 32,
+      "item": "mailer",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "plastic"
+        },
+        {
+          "name": "label",
+          "value": "fragile"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "0.3"
+        }
+      ],
+      "outcome": "fragile_shelf",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 8,
+      "time_start": 33,
+      "time_end": 36,
+      "item": "torn box",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "yes"
+        },
+        {
+          "name": "weight_kg",
+          "value": "9"
+        }
+      ],
+      "outcome": "returns",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 9,
+      "time_start": 37,
+      "time_end": 40,
+      "item": "box",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "4"
+        }
+      ],
+      "outcome": "standard_bin",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 10,
+      "time_start": 41,
+      "time_end": 44,
+      "item": "tall box",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "fragile"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "6"
+        }
+      ],
+      "outcome": "heavy_cart",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 11,
+      "time_start": 45,
+      "time_end": 48,
+      "item": "crushed box",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "fragile"
+        },
+        {
+          "name": "damaged",
+          "value": "yes"
+        },
+        {
+          "name": "weight_kg",
+          "value": "2"
+        }
+      ],
+      "outcome": "returns",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 12,
+      "time_start": 49,
+      "time_end": 52,
+      "item": "box",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "5.5"
+        }
+      ],
+      "outcome": "heavy_cart",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 13,
+      "time_start": 53,
+      "time_end": 56,
+      "item": "mailer",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "plastic"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "0.6"
+        }
+      ],
+      "outcome": "standard_bin",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 14,
+      "time_start": 57,
+      "time_end": 60,
+      "item": "box with sticker",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "fragile"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "2.5"
+        }
+      ],
+      "outcome": "fragile_shelf",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    },
+    {
+      "index": 15,
+      "time_start": 61,
+      "time_end": 64,
+      "item": "flat box",
+      "attributes": [
+        {
+          "name": "material",
+          "value": "cardboard"
+        },
+        {
+          "name": "label",
+          "value": "none"
+        },
+        {
+          "name": "damaged",
+          "value": "no"
+        },
+        {
+          "name": "weight_kg",
+          "value": "3"
+        }
+      ],
+      "outcome": "standard_bin",
+      "confidence": 0.9,
+      "evidence": "placed item in destination"
+    }
+  ]
+}

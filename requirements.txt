@@ -1,0 +1,3 @@
+openai>=1.60
+yt-dlp>=2025.1.1
+pytest>=8
