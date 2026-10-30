@@ -252,3 +252,28 @@ uncertainty. Each question must:
 - explain in why_it_matters what each answer would change.
 Prefer questions about thresholds that were never tested close up, rules supported by
 one event, and the default branch."""
+
+
+def answers_prompt(
+    domain: str,
+    events: list[dict[str, Any]],
+    current: dict[str, Any],
+    answers: list[dict[str, Any]],
+) -> str:
+    d = domain_text(domain)
+    return f"""You inferred rules for {d['actor']} from video, then asked the expert about
+cases the video did not settle. The expert has now answered.
+
+Your current rules:
+{json.dumps(current, indent=1, ensure_ascii=False)}
+
+The expert's answers:
+{json.dumps(answers, indent=1, ensure_ascii=False)}
+
+Observation log for reference:
+{_events_table(events)}
+
+Revise the rules so they reflect the answers. The expert outranks your inference about
+intent, but the log records what actually happened: if an answer conflicts with logged
+events, follow the expert and list those events in suspect_events, quoting the conflict.
+Change only what the answers affect, and explain each change in `reasoning`."""

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from unwritten.client import _extract_json, load_dotenv
-from unwritten.learner import chronological_split, run_lab
+from unwritten.learner import LabResult, apply_answers, chronological_split, run_lab
 from unwritten.report import render
 from unwritten.rules import Condition, Event, OneRBaseline, RuleSet, coverage, score
 
@@ -146,3 +146,33 @@ def test_load_dotenv_does_not_override_real_env(tmp_path, monkeypatch):
     load_dotenv(env)
     assert os.environ["UNWRITTEN_A"] == "from-file" and os.environ["UNWRITTEN_B"] == "real"
     monkeypatch.delenv("UNWRITTEN_A")
+
+
+def test_lab_result_survives_json_round_trip():
+    result = run_lab(FakeClient([INCOMPLETE, FIXED, QUESTIONS]), obs(), log=lambda *_: None)
+    copy = LabResult.from_dict(json.loads(json.dumps(result.to_dict())))
+    assert copy.to_dict() == result.to_dict()
+    assert render(copy) == render(result)
+
+
+def test_answers_revise_rules_rescore_and_hide_held_out_events():
+    result = run_lab(FakeClient([INCOMPLETE, INCOMPLETE, INCOMPLETE, QUESTIONS]), obs(), log=lambda *_: None)
+    assert result.test_accuracy < 1.0
+    fake = FakeClient([FIXED, {"questions": []}])
+    answers = [{"question": "Fragile items?", "probe": "a fragile box", "answer": "Always the fragile shelf."}]
+    apply_answers(fake, result, answers, log=lambda *_: None)
+    assert result.test_accuracy == 1.0  # scored in code, not reported by the model
+    change = result.revisions[0]
+    assert change["test_accuracy_before"] < change["test_accuracy_after"] == 1.0
+    assert change["rules_before"]["summary"] == "first guess"
+    prompt = fake.prompts[0][1]
+    assert "Always the fragile shelf." in prompt
+    for ev in result.test:
+        assert f'"index": {ev.index},' not in prompt
+    assert result.questions == []
+
+
+def test_answers_require_at_least_one():
+    result = run_lab(FakeClient([FIXED, QUESTIONS]), obs(), log=lambda *_: None)
+    with pytest.raises(ValueError):
+        apply_answers(FakeClient([]), result, [], log=lambda *_: None)

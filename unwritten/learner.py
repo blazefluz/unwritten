@@ -11,7 +11,7 @@ from typing import Any, Callable
 from .client import ModelClient
 from .prompts import (
     OBSERVE_SCHEMA, QUESTIONS_SCHEMA, RULES_SCHEMA,
-    hypothesize_prompt, observe_prompt, questions_prompt, revise_prompt,
+    answers_prompt, hypothesize_prompt, observe_prompt, questions_prompt, revise_prompt,
 )
 from .rules import Event, OneRBaseline, RuleSet, coverage, score
 
@@ -43,6 +43,8 @@ class LabResult:
     baseline_description: str = ""
     baseline_test_accuracy: float = 0.0
     questions: list[dict[str, Any]] = field(default_factory=list)
+    revisions: list[dict[str, Any]] = field(default_factory=list)  # one per batch of expert answers
+    synthetic: bool = False  # hand-written data and scripted replies, not model output
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -59,7 +61,26 @@ class LabResult:
             "baseline": {"description": self.baseline_description,
                          "test_accuracy": self.baseline_test_accuracy},
             "questions": self.questions,
+            "revisions": self.revisions,
+            "synthetic": self.synthetic,
         }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "LabResult":
+        events = {e.index: e for e in map(Event.from_dict, d["observation"]["events"])}
+        return cls(
+            domain=d["domain"], source=d["source"], observation=d["observation"],
+            train=[events[i] for i in d["split"]["train"]],
+            test=[events[i] for i in d["split"]["test"]],
+            attempts=[Attempt(**a) for a in d["attempts"]],
+            final=RuleSet.from_dict(d["final_rules"]) if d.get("final_rules") else None,
+            suspects=d.get("suspect_events", []),
+            predictions=d["predictions"], test_accuracy=d["test_accuracy"],
+            baseline_description=d["baseline"]["description"],
+            baseline_test_accuracy=d["baseline"]["test_accuracy"],
+            questions=d.get("questions", []), revisions=d.get("revisions", []),
+            synthetic=d.get("synthetic", False),
+        )
 
 
 def observe(client: ModelClient, video: str, domain: str, context: str = "") -> dict[str, Any]:
@@ -133,29 +154,73 @@ def run_lab(
 
     # 4. Predict held-out events with the rules (code applies them, not the model)
     assert result.final is not None
-    hits = 0
-    for ev in test:
-        predicted, fired, certain = result.final.apply(ev.attributes)
-        ok = predicted == ev.outcome
-        hits += ok
-        result.predictions.append({
-            "index": ev.index, "item": ev.item, "time_start": ev.time_start,
-            "attributes": ev.attributes, "predicted": predicted, "actual": ev.outcome,
-            "correct": ok, "fired_rule": fired, "certain": certain,
-        })
-    result.test_accuracy = hits / len(test)
+    _predict_held_out(result)
 
     # 5. Honest baseline: best single-attribute lookup table, no AI
     baseline = OneRBaseline().fit(train)
     result.baseline_description = baseline.describe()
     result.baseline_test_accuracy = baseline.accuracy(test)
-    log(f"Held-out prediction: {hits}/{len(test)} correct "
+    log(f"Held-out prediction: {sum(p['correct'] for p in result.predictions)}/{len(test)} correct "
         f"({result.test_accuracy:.0%}); one-attribute baseline {result.baseline_test_accuracy:.0%}.")
 
     # 6. Ask about the cases the evidence doesn't cover
-    cov = coverage(result.final, usable)
-    qs = client.ask_json(questions_prompt(domain, result.final.to_dict(), cov),
+    _ask_questions(client, result)
+    log(f"{len(result.questions)} question(s) for the expert.")
+    return result
+
+
+def _predict_held_out(result: LabResult) -> None:
+    assert result.final is not None
+    result.predictions = []
+    for ev in result.test:
+        predicted, fired, certain = result.final.apply(ev.attributes)
+        result.predictions.append({
+            "index": ev.index, "item": ev.item, "time_start": ev.time_start,
+            "attributes": ev.attributes, "predicted": predicted, "actual": ev.outcome,
+            "correct": predicted == ev.outcome, "fired_rule": fired, "certain": certain,
+        })
+    result.test_accuracy = sum(p["correct"] for p in result.predictions) / len(result.test)
+
+
+def _ask_questions(client: ModelClient, result: LabResult) -> None:
+    assert result.final is not None
+    cov = coverage(result.final, result.train + result.test)
+    qs = client.ask_json(questions_prompt(result.domain, result.final.to_dict(), cov),
                          QUESTIONS_SCHEMA, name="questions")
     result.questions = qs.get("questions", [])
-    log(f"{len(result.questions)} question(s) for the expert.")
+
+
+def apply_answers(
+    client: ModelClient,
+    result: LabResult,
+    answers: list[dict[str, Any]],
+    log: Log = print,
+) -> LabResult:
+    """Revise the rules from the expert's answers, then re-score them in code.
+
+    The model sees training events only, so the held-out score stays a real test.
+    Each answer holds the question text, the probe and the expert's answer.
+    """
+    assert result.final is not None
+    if not answers:
+        raise ValueError("No answers to apply.")
+    before = score(result.final, result.train)
+    before_rules, before_test = result.final.to_dict(), result.test_accuracy
+    proposal = client.ask_json(
+        answers_prompt(result.domain, [e.to_dict() for e in result.train], before_rules, answers),
+        RULES_SCHEMA, name="rules")
+    result.final = RuleSet.from_dict(proposal)
+    result.suspects = proposal.get("suspect_events", [])
+    _predict_held_out(result)
+    after = score(result.final, result.train)
+    result.revisions.append({
+        "answers": answers, "reasoning": proposal.get("reasoning", ""),
+        "rules_before": before_rules,
+        "train_accuracy_before": before.accuracy, "train_accuracy_after": after.accuracy,
+        "test_accuracy_before": before_test, "test_accuracy_after": result.test_accuracy,
+    })
+    log(f"Expert answers applied: training {before.accuracy:.0%} → {after.accuracy:.0%}, "
+        f"held-out {before_test:.0%} → {result.test_accuracy:.0%}.")
+    _ask_questions(client, result)
+    log(f"{len(result.questions)} new question(s) for the expert.")
     return result
