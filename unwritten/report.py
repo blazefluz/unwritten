@@ -28,14 +28,19 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertic
 """
 
 
+SYNTHETIC_BANNER = ('<div class="card warn" role="note"><b>Synthetic sample.</b> Hand-written data and '
+                    'scripted replies, not Muse Spark output and not from a video.</div>')
+
+
 def _e(s: object) -> str:
     return html.escape(str(s))
 
 
-def _rules_html(rs: RuleSet) -> str:
+def _rules_html(rs: RuleSet, numbered_data: bool = False) -> str:
     out = []
     for i, r in enumerate(rs.rules):
-        out.append(f'<div class="rule">{i}. {_e(r)}</div>')
+        data = f' data-rule="{i}"' if numbered_data else ""
+        out.append(f'<div class="rule"{data}>{i}. {_e(r)}</div>')
         if r.why:
             out.append(f'<div class="why">{_e(r.why)}</div>')
     out.append(f'<div class="rule">otherwise → {_e(rs.default)}</div>')
@@ -50,7 +55,20 @@ def _ts(t: float) -> str:
     return f"{int(t // 60)}:{int(t % 60):02d}"
 
 
-def render(result: LabResult) -> str:
+def _revisions_html(result: LabResult) -> str:
+    if not result.revisions:
+        return ""
+    cards = []
+    for n, rev in enumerate(result.revisions, 1):
+        answers = "".join(f"<li>{_e(a['question'])} <b>{_e(a['answer'])}</b></li>" for a in rev["answers"])
+        cards.append(f"""<div class="card"><b>Update {n}</b>
+<span class="muted"> · training {rev['train_accuracy_before']:.0%} → {rev['train_accuracy_after']:.0%} ·
+held-out {rev['test_accuracy_before']:.0%} → {rev['test_accuracy_after']:.0%}</span>
+<ul>{answers}</ul><p>{_e(rev['reasoning'])}</p></div>""")
+    return "<h2>What the expert changed</h2>" + "".join(cards)
+
+
+def render(result: LabResult, live_href: str = "") -> str:
     final = result.final
     assert final is not None
     hits = sum(p["correct"] for p in result.predictions)
@@ -88,8 +106,10 @@ def render(result: LabResult) -> str:
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Unwritten lab notebook</title><style>{CSS}</style></head><body><main>
+{SYNTHETIC_BANNER if result.synthetic else ''}
 <h1>Unwritten — lab notebook</h1>
-<div class="muted">Source: {_e(result.source)} · domain: {_e(result.domain)}</div>
+<div class="muted">Source: {_e(result.source)} · domain: {_e(result.domain)}
+{f'· <a href="{_e(live_href)}" style="color:var(--accent)">Watch it predict</a>' if live_href else ''}</div>
 
 <div class="stats" style="margin-top:18px">
 <div class="card stat"><span class="muted">Held-out predictions</span><b>{hits}/{n}</b>
@@ -107,17 +127,20 @@ after {len(result.attempts)} round(s) of checking</div></div>
 
 <h2>Questions for the expert</h2>{qs or '<p class="muted">None.</p>'}
 
+{_revisions_html(result)}
+
 <h2>How the rules were found</h2>{''.join(attempts)}
 
 <h2>Observation log (from video)</h2>
 <div class="card wrap"><table><tr><th>#</th><th>Time</th><th>Item</th><th>Attributes</th>
 <th>Outcome</th><th>Conf.</th></tr>{obs_rows}</table></div>
-<p class="muted">Observations and rule hypotheses: Muse Spark via Meta Model API.
-Accuracy figures: computed by deterministic code, not reported by the model.</p>
+<p class="muted">{'Scripted replies stand in for the model in this sample.' if result.synthetic else 'Observations and rule hypotheses: Muse Spark via Meta Model API.'}
+Accuracy figures: computed by deterministic code, not reported by the model. The model logged each
+item's attributes after watching the whole clip, so they may be influenced by where the item went.</p>
 </main></body></html>"""
 
 
-def write(result: LabResult, path: str | Path) -> Path:
+def write(result: LabResult, path: str | Path, live_href: str = "") -> Path:
     path = Path(path)
-    path.write_text(render(result), encoding="utf-8")
+    path.write_text(render(result, live_href), encoding="utf-8")
     return path
