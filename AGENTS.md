@@ -14,7 +14,7 @@ Pipeline (see README.md):
 5. PREDICT — rules from the first ~60% of events (chronological split) predict the rest.
 6. COMPARE — OneR baseline (best single-attribute lookup, no AI).
 7. ASK — model asks the expert targeted questions where evidence is thin (`coverage()` computes where).
-Output: `<clip>.lab.html` notebook + `<clip>.lab.json`.
+Output in `labs/`: `<clip>.lab.html` notebook, `<clip>.live.html` player, `<clip>.lab.json`.
 
 ## Hard rules from the hackathon (do not break)
 - **The app's AI must be Meta's models** (Meta Model API: Muse Spark `muse-spark-1.3`, SAM 3.1,
@@ -38,20 +38,20 @@ Output: `<clip>.lab.html` notebook + `<clip>.lab.json`.
 - Reasoning shares the output token budget: keep `max_output_tokens` high.
 
 ## Status (as of Oct 30, 2026)
-- Done: engine, CLI (`observe`, `learn`, `run`, `fetch`), HTML notebook, 8 offline tests
-  (`python -m pytest -q`) using a fake model client and synthetic fixture data.
-- NOT done: first real run against Muse Spark on a real video (go/no-go test of observation accuracy).
-- Done: public GitHub repo `blazefluz/unwritten`.
+- Done: engine, CLI (`serve`, `observe`, `learn`, `run`, `eval`, `check`, `fetch`), local app
+  (`unwritten/server.py`), live prediction player (`unwritten/live.py`), expert answers that revise
+  and re-score the rules, evaluation against hand labels (`unwritten/evals.py`), labelled synthetic
+  sample, offline tests (`python -m pytest -q`).
+- NOT done: anything against real Muse Spark. `client.py` has never made a live call, so the go/no-go
+  on observation accuracy is still open. This needs `MODEL_API_KEY`.
+- Open question: are non-Meta coding agents allowed? Ask in the hackathon Discord #questions.
 
 ## Next steps, in priority order
-1. Real run on a 1–2 min sorting clip; inspect the observation log accuracy. If poor, try shorter
-   clips, `--context`, or sampling keyframes.
-2. Small eval set: 3–5 clips with hand-labelled ground truth; report observation and prediction accuracy.
-3. Live "predict before it happens" view: play the held-out part of the video with the predicted
-   destination overlaid before each placement (the demo's central moment).
-4. Interactive answers to the expert questions that update the rules and re-score.
-5. Optional: SAM 3.1 to highlight the item being sorted in each frame of the notebook/video.
-6. Nov 3: record the 3-minute demo. Nov 4: README polish, submit.
+1. `python -m unwritten check`, then a real run on a 1–2 min sorting clip; inspect the observation log.
+   If poor, try shorter clips, `--context`, or sampling keyframes.
+2. Eval set: 3–5 clips with hand labels in `evals/`; put the numbers in the README.
+3. Optional: SAM 3.1 to highlight the item being sorted.
+4. Nov 3: record the demo (`docs/DEMO.md`). Nov 4: README polish, submit.
 
 ## Conventions
 - Python 3.10+, standard library + `openai` SDK only in the core; keep model calls in `client.py`.

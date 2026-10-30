@@ -43,22 +43,52 @@ chronological: rules learned from earlier events have to predict later ones.
 ## Quick start
 
 ```bash
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-export MODEL_API_KEY=...            # Meta Model API key
+python -m unwritten serve           # open http://127.0.0.1:8765
+```
 
+Open the **synthetic sample** to see the whole flow with no key and no video. It uses
+hand-written data and scripted replies, and every page says so.
+
+To run a real clip, add your Meta Model API key, confirm it works, and restart the app:
+
+```bash
+echo 'MODEL_API_KEY=your-key' > .env
+python -m unwritten check
+```
+
+Upload an mp4 in the app. It logs the decisions, learns rules from the first 60%, then
+plays the clip and shows each prediction **before** the person acts. Answer the expert
+questions and the rules are revised and re-scored in code; the model sees only the
+training events, so the held-out score stays a real test.
+
+### Command line
+
+```bash
 python -m unwritten run clip.mp4 --domain sorting
-# → clip.observations.json, clip.lab.json, clip.lab.html
+# → labs/clip.observations.json, .lab.json, .lab.html, .live.html
 ```
 
 Two-step mode (re-run the reasoning without re-watching the video):
 
 ```bash
 python -m unwritten observe clip.mp4 --domain sorting --context "warehouse returns desk"
-python -m unwritten learn clip.observations.json --train 0.6 --rounds 3
+python -m unwritten learn labs/clip.observations.json --train 0.6 --rounds 3
 ```
 
 Domains: `sorting` (where items go), `sequence` (what an operator does next),
 `game` (what a move does).
+
+### Measuring it against the truth
+
+The lab's accuracy compares rules with the model's own log, so it cannot catch a
+misperceived video. Label clips by hand ([format](evals/README.md)) and score the model
+against your labels:
+
+```bash
+python -m unwritten eval evals/
+```
 
 ### Using YouTube clips
 
@@ -71,6 +101,14 @@ python -m unwritten fetch "https://www.youtube.com/watch?v=..." --start 30 --end
 
 Find candidates with YouTube search → **Filters → Creative Commons**.
 
+## Limits
+
+- Prediction is only as good as perception. Use `eval` to measure how good that is.
+- The model logs each item's attributes after watching the whole clip, including where
+  the item went, so those descriptions may be influenced by the outcome. A chronological
+  split cannot rule this out; hand-labelled attributes can.
+- A short clip gives a small test set. Read 5/6 as a small sample, not as 83%.
+
 ## Tests
 
 ```bash
@@ -79,7 +117,8 @@ python -m pytest -q
 
 The tests use a scripted stand-in for the model and a hand-written fixture
 (`fixtures/synthetic_parcels.observations.json`, **synthetic test data, not from a
-video**) to verify the checking, revision, prediction and baseline logic offline.
+video**) to verify the checking, revision, prediction, baseline, evaluation and app
+logic offline.
 
 ## Built during the hackathon
 
