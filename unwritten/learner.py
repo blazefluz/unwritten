@@ -110,6 +110,7 @@ def run_lab(
     # 1. Hypothesize, 2. check in code, 3. revise on counterexamples
     proposal = client.ask_json(hypothesize_prompt(domain, train_dicts, glossary),
                                RULES_SCHEMA, name="rules")
+    best_accuracy = -1.0
     for round_no in range(1, max_rounds + 1):
         ruleset = RuleSet.from_dict(proposal)
         suspects = proposal.get("suspect_events", [])
@@ -121,7 +122,9 @@ def run_lab(
         log(f"Round {round_no}: {len(ruleset.rules)} rule(s), explains "
             f"{checked.correct}/{checked.total} training events"
             f"{f', {len(suspect_ids)} flagged as suspect' if suspect_ids else ''}.")
-        result.final, result.suspects = ruleset, suspects
+        # A revision can make things worse: keep the best round, judged on training data only.
+        if checked.accuracy >= best_accuracy:
+            best_accuracy, result.final, result.suspects = checked.accuracy, ruleset, suspects
         if not unexplained or round_no == max_rounds:
             break
         proposal = client.ask_json(

@@ -5,3 +5,5 @@ __pycache__/
 .env
 clips/
 *.mp4
+.omc/
+labs/

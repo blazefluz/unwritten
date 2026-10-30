@@ -15,6 +15,7 @@ from typing import Any, Protocol
 DEFAULT_BASE_URL = "https://api.meta.ai/v1"
 DEFAULT_MODEL = "muse-spark-1.3"
 UPLOAD_TTL_SECONDS = 7 * 24 * 3600  # uploaded clips expire after a week
+MAX_UPLOAD_BYTES = 1024 ** 3  # Files API limit
 
 
 class ModelClient(Protocol):
@@ -29,6 +30,18 @@ class ModelClient(Protocol):
         name: str,
         video: str | None = None,
     ) -> dict[str, Any]: ...
+
+
+def load_dotenv(path: str | Path = ".env") -> None:
+    """Read KEY=value lines into the environment; real env vars win."""
+    path = Path(path)
+    if not path.is_file():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip().removeprefix("export ").strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
 
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -60,9 +73,10 @@ class MetaClient:
     ) -> None:
         from openai import OpenAI  # imported lazily so tests don't need it
 
+        load_dotenv()
         key = api_key or os.environ.get("MODEL_API_KEY")
         if not key:
-            raise RuntimeError("Set MODEL_API_KEY to your Meta Model API key.")
+            raise RuntimeError("Set MODEL_API_KEY to your Meta Model API key (env var or .env file).")
         self.model = model or os.environ.get("UNWRITTEN_MODEL", DEFAULT_MODEL)
         self.reasoning_effort = reasoning_effort
         self.max_output_tokens = max_output_tokens
@@ -75,6 +89,8 @@ class MetaClient:
         path = Path(path)
         if path.suffix.lower() != ".mp4":
             raise ValueError("Muse Spark video input supports .mp4 only.")
+        if path.stat().st_size > MAX_UPLOAD_BYTES:
+            raise ValueError("Muse Spark video uploads are limited to 1 GiB.")
         with path.open("rb") as f:
             uploaded = self._client.files.create(
                 purpose="user_data",
@@ -104,4 +120,7 @@ class MetaClient:
             reasoning={"effort": self.reasoning_effort},
             max_output_tokens=self.max_output_tokens,
         )
+        if getattr(response, "status", None) == "incomplete":
+            raise RuntimeError(f"Model output was cut off ({response.incomplete_details}); "
+                               "raise max_output_tokens or use a shorter clip.")
         return _extract_json(response.output_text)

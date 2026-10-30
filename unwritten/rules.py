@@ -39,6 +39,7 @@ class Event:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Event":
         attrs = d.get("attributes", {})
+        confidence = d.get("confidence")
         if isinstance(attrs, list):  # schema form: [{"name":..,"value":..}]
             attrs = {a["name"]: a["value"] for a in attrs}
         return cls(
@@ -48,7 +49,7 @@ class Event:
             outcome=norm(d["outcome"]),
             time_start=float(d.get("time_start", 0) or 0),
             time_end=float(d.get("time_end", 0) or 0),
-            confidence=float(d.get("confidence", 1) or 1),
+            confidence=1.0 if confidence is None else float(confidence),
             evidence=d.get("evidence", ""),
         )
 
@@ -88,9 +89,9 @@ class Condition:
             if a is None or e is None:
                 return None
             return {"lt": a < e, "lte": a <= e, "gt": a > e, "gte": a >= e}[op]
-        if op == "neq":
-            return actual != expected
-        return actual == expected  # eq and anything unrecognised
+        a, e = _num(actual), _num(expected)
+        same = a == e if a is not None and e is not None else actual == expected
+        return not same if op == "neq" else same  # eq and anything unrecognised
 
     def __str__(self) -> str:
         sym = {"eq": "=", "neq": "≠", "lt": "<", "lte": "≤", "gt": ">", "gte": "≥",

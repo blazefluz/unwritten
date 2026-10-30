@@ -1,11 +1,12 @@
 """Offline tests: a scripted fake stands in for Muse Spark, so the checking,
 revision and prediction logic can be verified without API calls."""
 import json
+import os
 from pathlib import Path
 
 import pytest
 
-from unwritten.client import _extract_json
+from unwritten.client import _extract_json, load_dotenv
 from unwritten.learner import chronological_split, run_lab
 from unwritten.report import render
 from unwritten.rules import Condition, Event, OneRBaseline, RuleSet, coverage, score
@@ -54,6 +55,24 @@ def test_conditions():
     assert Condition("label", "in", "Fragile|glass").holds(a) is True
     assert Condition("damaged", "eq", "yes").holds(a) is None  # unknown is not False
     assert Condition("colour", "eq", "red").holds(a) is None
+
+
+def test_numeric_equality_ignores_formatting():
+    a = {"count": "5.0"}
+    assert Condition("count", "eq", "5").holds(a) is True
+    assert Condition("count", "neq", "5").holds(a) is False
+
+
+def test_zero_confidence_is_kept():
+    event = Event.from_dict({"index": 0, "outcome": "bin", "confidence": 0})
+    assert event.confidence == 0.0
+
+
+def test_worse_revision_does_not_replace_better_rules():
+    worse = {**INCOMPLETE, "rules": [], "default": "returns", "summary": "worse"}
+    result = run_lab(FakeClient([INCOMPLETE, worse, worse, QUESTIONS]), obs(), log=lambda *_: None)
+    assert result.attempts[-1].train_accuracy < result.attempts[0].train_accuracy
+    assert result.final.summary == "first guess"
 
 
 def test_unknown_attribute_marks_prediction_uncertain():
@@ -117,3 +136,13 @@ def test_split_needs_enough_events():
 def test_extract_json_tolerates_wrapping():
     assert _extract_json('Here:\n```json\n{"a": 1}\n```') == {"a": 1}
     assert _extract_json('result {"a": 2} done') == {"a": 2}
+
+
+def test_load_dotenv_does_not_override_real_env(tmp_path, monkeypatch):
+    env = tmp_path / ".env"
+    env.write_text('# comment\nexport UNWRITTEN_A="from-file"\nUNWRITTEN_B=from-file\n')
+    monkeypatch.delenv("UNWRITTEN_A", raising=False)
+    monkeypatch.setenv("UNWRITTEN_B", "real")
+    load_dotenv(env)
+    assert os.environ["UNWRITTEN_A"] == "from-file" and os.environ["UNWRITTEN_B"] == "real"
+    monkeypatch.delenv("UNWRITTEN_A")

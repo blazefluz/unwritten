@@ -4,6 +4,8 @@
     python -m unwritten learn observations.json             # rules, predictions, notebook
     python -m unwritten run clip.mp4                        # both steps
     python -m unwritten fetch <youtube-url> --start 30 --end 150   # CC-licensed clips only
+    python -m unwritten eval evals/                         # score against hand labels
+    python -m unwritten check                               # verify the API key and model
 """
 from __future__ import annotations
 
@@ -45,6 +47,13 @@ def _learn(args, obs_path: Path) -> None:
     print(f"Notebook → {write(result, f'{stem}.lab.html')}")
 
 
+def _check() -> None:
+    client = _client()
+    schema = {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]}
+    reply = client.ask_json('Return {"ok": true}.', schema, name="health_check")
+    print(f"{client.model} replied: {reply}")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(prog="unwritten", description="Learn unwritten rules from video.")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -67,6 +76,11 @@ def main() -> None:
     f.add_argument("--start", type=float); f.add_argument("--end", type=float)
     f.add_argument("--out-dir", default="clips")
 
+    sub.add_parser("check")
+
+    e = sub.add_parser("eval"); e.add_argument("folder", help="folder of <clip>.truth.json files")
+    e.add_argument("--labs", default="labs"); e.add_argument("--tolerance", type=float, default=3.0)
+
     args = p.parse_args()
     if args.cmd == "observe":
         _observe(args)
@@ -74,6 +88,14 @@ def main() -> None:
         _learn(args, Path(args.observations))
     elif args.cmd == "run":
         _learn(args, _observe(args))
+    elif args.cmd == "eval":
+        from .evals import evaluate_folder, format_report
+        report = evaluate_folder(args.folder, args.labs, args.tolerance)
+        out = Path(args.folder) / "eval_report.json"
+        out.write_text(json.dumps(report, indent=2))
+        print(f"{format_report(report)}\n\nFull report → {out}")
+    elif args.cmd == "check":
+        _check()
     elif args.cmd == "fetch":
         from .fetch_clip import fetch
         clip = fetch(args.url, args.out_dir, args.start, args.end)

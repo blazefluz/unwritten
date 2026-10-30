@@ -41,7 +41,7 @@ Output: `<clip>.lab.html` notebook + `<clip>.lab.json`.
 - Done: engine, CLI (`observe`, `learn`, `run`, `fetch`), HTML notebook, 8 offline tests
   (`python -m pytest -q`) using a fake model client and synthetic fixture data.
 - NOT done: first real run against Muse Spark on a real video (go/no-go test of observation accuracy).
-- NOT done: GitHub repo `blazefluz/unwritten` (public) needs creating and pushing.
+- Done: public GitHub repo `blazefluz/unwritten`.
 
 ## Next steps, in priority order
 1. Real run on a 1–2 min sorting clip; inspect the observation log accuracy. If poor, try shorter
