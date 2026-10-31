@@ -1,0 +1,106 @@
+{
+  "kind": "workflow_analysis",
+  "task": "SYNTHETIC OFFLINE DEMO \u2014 routing an item",
+  "source": "Synthetic test fixture \u2014 no real video or model output",
+  "events": [
+    {
+      "id": "event-1",
+      "time_start": 2,
+      "time_end": 5,
+      "action": "Worker moves a marked item to the left tray.",
+      "visible_evidence": "A red marker is visible.",
+      "observed_result": "Item in left tray",
+      "uncertainties": [
+        "Marker meaning is unknown."
+      ]
+    }
+  ],
+  "references": [
+    {
+      "id": "ref-1",
+      "title": "SYNTHETIC reference",
+      "declared_scope": "Synthetic task v1",
+      "lines": [
+        "SYNTHETIC TEST REFERENCE \u2014 not a real operating procedure.",
+        "Items marked red belong in the left tray."
+      ],
+      "sha256": "f494d532d8e6b8ae56293716dbd3e0a4b1824d637d897774f46c1f3e15b6b0eb"
+    }
+  ],
+  "expert_answers": {},
+  "attempts": [
+    {
+      "hypotheses": [
+        {
+          "id": "h1",
+          "event_ids": [
+            "event-1"
+          ],
+          "claim": "Marker colour may determine destination.",
+          "reasoning": "The marked item was routed left.",
+          "alternatives": [
+            "Another property may determine the destination."
+          ],
+          "expert_question": "h1: What does the red marker mean?"
+        }
+      ],
+      "reviews": [
+        {
+          "hypothesis_id": "h1",
+          "proposed_assessment": "supported",
+          "assessment": "supported",
+          "explanation": "The sample text describes this routing.",
+          "applicability": "Synthetic task v1 matches the test context.",
+          "citations": [
+            {
+              "reference_id": "ref-1",
+              "line_start": 2,
+              "line_end": 2,
+              "quote": "Items marked red belong in the left tray.",
+              "valid": true
+            }
+          ],
+          "validation_errors": [],
+          "human_review_required": true
+        }
+      ]
+    }
+  ],
+  "final": {
+    "hypotheses": [
+      {
+        "id": "h1",
+        "event_ids": [
+          "event-1"
+        ],
+        "claim": "Marker colour may determine destination.",
+        "reasoning": "The marked item was routed left.",
+        "alternatives": [
+          "Another property may determine the destination."
+        ],
+        "expert_question": "h1: What does the red marker mean?"
+      }
+    ],
+    "reviews": [
+      {
+        "hypothesis_id": "h1",
+        "proposed_assessment": "supported",
+        "assessment": "supported",
+        "explanation": "The sample text describes this routing.",
+        "applicability": "Synthetic task v1 matches the test context.",
+        "citations": [
+          {
+            "reference_id": "ref-1",
+            "line_start": 2,
+            "line_end": 2,
+            "quote": "Items marked red belong in the left tray.",
+            "valid": true
+          }
+        ],
+        "validation_errors": [],
+        "human_review_required": true
+      }
+    ]
+  },
+  "limitations": "SYNTHETIC OFFLINE DEMO. Scripted test data; not real model output or measured accuracy. Model interpretations require expert review. Code checks citation provenance and event structure, not factual or diagnostic accuracy."
+}

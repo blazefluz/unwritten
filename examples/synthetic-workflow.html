@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Unwritten · SYNTHETIC OFFLINE DEMO — routing an item</title><style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1b;--muted:#6b6a65;--line:#e4e2db;
+--good:#1f7a4d;--bad:#b3261e;--warn:#9a6700;--accent:#2b59c3}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#ecebe6;
+--muted:#a3a19a;--line:#33322f;--good:#5fc28e;--bad:#f2867e;--warn:#e0b44f;--accent:#8aa9ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:980px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:32px 0 10px}
+.muted{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);
+border-radius:10px;padding:16px;margin:10px 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.stat b{display:block;font-size:28px}.rule{font-family:ui-monospace,Menlo,monospace;
+font-size:14px}.why{color:var(--muted);font-size:13px;margin:2px 0 10px 18px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.ok{color:var(--good);font-weight:600}.no{color:var(--bad);font-weight:600}
+.warn{color:var(--warn)}.wrap{overflow-x:auto}code{font-size:12px}
+</style><main><h1>Unwritten · Workflow review</h1><p>SYNTHETIC OFFLINE DEMO — routing an item</p><p>Source: Synthetic test fixture — no real video or model output</p><p class="warn">SYNTHETIC OFFLINE DEMO. Scripted test data; not real model output or measured accuracy. Model interpretations require expert review. Code checks citation provenance and event structure, not factual or diagnostic accuracy.</p><p class="muted">Video not embedded. Event times refer to the source clip.</p><h2>Observed actions</h2><div class="wrap"><table><tr><th>Event / time</th><th>Action</th><th>Visible evidence</th><th>Result / uncertainty</th></tr><tr><td>event-1<br><button type="button" data-time="2">2–5s</button></td><td>Worker moves a marked item to the left tray.</td><td>A red marker is visible.</td><td>Item in left tray<br>Marker meaning is unknown.</td></tr></table></div><section><h2>Review round 1</h2><article class="card"><h3>Marker colour may determine destination.</h3><p><b>Inference:</b> The marked item was routed left.</p><p>Events: event-1</p><p>Alternatives: Another property may determine the destination.</p><p><b>Model assessment: supported</b> · expert review required</p><p>The sample text describes this routing.</p><p>Applicability: Synthetic task v1 matches the test context.</p><blockquote><b>ref-1 · lines 2–2 · exact citation</b><pre style="white-space:pre-wrap">Items marked red belong in the left tray.</pre></blockquote><p class="warn"></p><p><b>Ask the expert:</b> h1: What does the red marker mean?</p></article></section><h2>Expert testimony</h2><pre>{}</pre><h2>Supplied reference excerpts</h2><article class="card"><h3>ref-1 · SYNTHETIC reference</h3><p>Declared scope: Synthetic task v1</p><p>SHA-256: <code>f494d532d8e6b8ae56293716dbd3e0a4b1824d637d897774f46c1f3e15b6b0eb</code></p><pre style="white-space:pre-wrap">1: SYNTHETIC TEST REFERENCE — not a real operating procedure.
+2: Items marked red belong in the left tray.</pre></article></main><script>
+document.querySelectorAll('button[data-time]').forEach(button => {
+  const video = document.getElementById('task-video');
+  if (!video) { button.disabled = true; return; }
+  button.addEventListener('click', () => {
+    video.currentTime = Number(button.dataset.time);
+    video.scrollIntoView({behavior: 'smooth', block: 'center'});
+  });
+});
+</script></html>

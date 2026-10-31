@@ -5,3 +5,12 @@ __pycache__/
 .env
 clips/
 *.mp4
+node_modules/
+.next/
+*.tsbuildinfo
+.env.local
+.env.*.local
+.unwritten-runs/
+.impeccable/
+.omc/
+web/AGENTS.md

@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
+from urllib.parse import quote
 
 from .prompts import DOMAINS
 
@@ -57,6 +59,56 @@ def _play(lab: dict, out: str, video: str | None) -> None:
     print(f"Prediction player → {player.write(lab, out, video)}")
 
 
+def _analyze(args) -> None:
+    from .workflow import analyze, load_references, render
+
+    if bool(args.video) == bool(args.observations):
+        raise ValueError("Supply either a video or --observations, not both.")
+    if not 1 <= args.rounds <= 3:
+        raise ValueError("--rounds must be between 1 and 3.")
+    references = load_references(args.reference, args.reference_scope)
+    answers = json.loads(Path(args.answers).read_text()) if args.answers else {}
+    if not isinstance(answers, dict) or any(not isinstance(k, str) or not isinstance(v, str)
+                                          for k, v in answers.items()):
+        raise ValueError("--answers must map full expert question text to text answers.")
+    observation = json.loads(Path(args.observations).read_text()) if args.observations else None
+    if observation is not None and observation.get("kind") != "workflow_observations":
+        raise ValueError("--observations requires a saved workflow observation file.")
+    source = args.video or observation.get("source", args.observations)
+    if args.out:
+        stem = Path(args.out)
+    elif args.observations:
+        stem = Path(str(args.observations).removesuffix(".workflow.observations.json"))
+    else:
+        stem = Path(args.video).with_suffix("")
+    stem.parent.mkdir(parents=True, exist_ok=True)
+    if any(Path(f"{stem}{suffix}").exists() for suffix in (".workflow.json", ".workflow.html")):
+        raise ValueError("Workflow output already exists; use --out with a new prefix to preserve the previous review.")
+    if args.video and (not Path(args.video).is_file() or Path(args.video).suffix.lower() != ".mp4"):
+        raise ValueError("Supply a local .mp4 video.")
+    # Check filesystem and inputs before a paid model call; save perception before
+    # reasoning so a retry need not upload or watch the video again.
+    def save_observations(value):
+        Path(f"{stem}.workflow.observations.json").write_text(
+            json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    client = _client()
+    video = None
+    if args.video:
+        video = client.upload_video(args.video)
+    result = analyze(client, task=args.task, source=source, video=video,
+                     observation=observation, references=references, answers=answers,
+                     rounds=args.rounds, on_observed=save_observations)
+    Path(f"{stem}.workflow.json").write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    report_path = Path(f"{stem}.workflow.html")
+    video_src = (quote(os.path.relpath(Path(source).resolve(), report_path.parent.resolve()))
+                 if Path(source).is_file() and Path(source).suffix.lower() == ".mp4" else None)
+    report_path.write_text(render(result, video_src=video_src), encoding="utf-8")
+    print(f"Workflow review → {report_path}")
+    print("Citation provenance checked in code. Interpretations require expert review.")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(prog="unwritten", description="Learn unwritten rules from video.")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -82,6 +134,16 @@ def main() -> None:
     f.add_argument("--start", type=float); f.add_argument("--end", type=float)
     f.add_argument("--out-dir", default="clips")
 
+    a = sub.add_parser("analyze", help="observe any task, infer principles, and review against references")
+    a.add_argument("video", nargs="?", help="local .mp4 file")
+    a.add_argument("--task", required=True, help="task, equipment, situation and intended outcome")
+    a.add_argument("--observations", help="reuse a saved .workflow.observations.json")
+    a.add_argument("--reference", action="append", default=[], help="UTF-8 .txt/.md excerpt; repeatable")
+    a.add_argument("--reference-scope", default="", help="reference equipment/model/version and applicability")
+    a.add_argument("--answers", help="JSON object mapping full question text to expert answers")
+    a.add_argument("--rounds", type=int, default=2, help="review/revision rounds, 1–3")
+    a.add_argument("--out", help="output path prefix")
+
     args = p.parse_args()
     if args.cmd == "observe":
         _observe(args)
@@ -97,6 +159,11 @@ def main() -> None:
         from .fetch_clip import fetch
         clip = fetch(args.url, args.out_dir, args.start, args.end)
         print(f"Saved {clip} (attribution in {clip.with_suffix('.attribution.json')})")
+    elif args.cmd == "analyze":
+        try:
+            _analyze(args)
+        except (ValueError, OSError) as exc:
+            p.error(str(exc))
 
 
 if __name__ == "__main__":

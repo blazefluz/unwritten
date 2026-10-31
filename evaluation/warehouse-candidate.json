@@ -1,0 +1,22 @@
+{
+  "status": "downloaded_candidate_not_yet_annotated_or_model_evaluated",
+  "title": "Warehouse Entry Bag Check weighing and Manual Sorting system",
+  "creator": "Dhanvanthri Engineers",
+  "source_url": "https://www.youtube.com/watch?v=ioqxuv8ItgA",
+  "local_video": "clips/warehouse-bags/ioqxuv8ItgA.mp4",
+  "license": "Creative Commons Attribution license (reuse allowed)",
+  "attribution_file": "clips/warehouse-bags/ioqxuv8ItgA.attribution.json",
+  "review_method": "Agent visual screening of frames sampled every ten seconds; not a human ground-truth annotation",
+  "observed_content": [
+    "Workers feed sacks into a warehouse conveyor and weighing line",
+    "Workers handle bags beside the line",
+    "Later frames show a weighing dashboard"
+  ],
+  "limitations": [
+    "Inbound handling rather than warehouse returns inspection",
+    "Camera cuts and changing viewpoints",
+    "Routing may depend on weight or instructions not visible at decision time",
+    "Number of independently observable decisions has not been established"
+  ],
+  "next_step": "Review continuous sequences, annotate observable events independently, then run Meta only after API access and credits are ready"
+}

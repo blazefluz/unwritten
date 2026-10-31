@@ -2,6 +2,93 @@
 
 **Learn the rules nobody wrote down, by watching someone work.**
 
+Unwritten now includes a general workflow review: describe any task, supply a
+video and optional reference excerpts, and inspect the observed actions,
+hypothesized decision principles, cited reference checks, revisions and questions
+for the expert. Repair, inspection, sorting and other tasks use the same engine.
+The warehouse example remains available through the original rule-learning CLI.
+
+## Review any task
+
+### Next.js workspace
+
+```bash
+npm ci --prefix web
+npm run dev
+# Open http://127.0.0.1:3040
+```
+
+The local workspace includes source-video playback, an event timeline, linked
+reasoning and citations, reference documents, revision history, and expert-answer
+export. Open an existing `.workflow.json` with **Open review**, or choose
+**New analysis** to send a video and optional excerpts to the Python engine.
+The initial example is explicitly synthetic, not a real analysis. Attaching a
+local video to an existing review only changes playback; attach its matching
+source to use the recorded timestamps. Imported reviews and draft expert answers
+live in the browser tab: export them before closing or refreshing it.
+
+For new Meta analyses, install the Python dependencies into `.venv`, add
+`MODEL_API_KEY` to the gitignored `web/.env.local`, and restart Next.js. Keys stay
+on the server; never use a `NEXT_PUBLIC_` variable for credentials. The default
+Python executable is `.venv/bin/python`; override it with `UNWRITTEN_PYTHON` if
+needed. Wait for billing/API access and credits before starting a paid run.
+The upload form accepts local MP4 videos up to 100 MB and UTF-8 `.txt`/`.md`
+references. Its same-origin route invokes `unwritten.web_bridge`; saved run inputs,
+observations, and results remain locally in the ignored `.unwritten-runs/` folder.
+The app is designed for a local Node.js server with Python, not a serverless host.
+
+Production checks: `npm run build` and `npm run typecheck`.
+
+### Python CLI
+
+```bash
+python -m unwritten analyze task.mp4 \
+  --task "Describe the work, equipment/model and situation" \
+  --reference reference-excerpt.txt \
+  --reference-scope "Document title, issuer, model/version and applicability"
+```
+
+References are optional, repeatable UTF-8 `.txt` or `.md` excerpts. Export relevant
+PDF passages to text first and include the original page numbers, document title,
+edition and source URL in the text. Use sources you have rights to use. This
+version does not fetch manuals or establish their authenticity automatically.
+Use the exact equipment/version when available; unspecified or uncertain
+applicability must remain inconclusive. Each reference is hashed and included
+with numbered lines in the notebook so its citations can be checked.
+
+Outputs: `task.workflow.observations.json`, `task.workflow.json` and
+`task.workflow.html`. The stages are:
+
+1. **Observe:** Meta logs timestamped actions, visible evidence, observed results
+   and uncertainty, before seeing reference documents.
+2. **Hypothesize:** Meta proposes principles linked to those event IDs, with
+   alternative explanations and targeted expert questions.
+3. **Check:** Meta assesses the supplied references. Code checks every citation's
+   reference ID, line range and exact full-line quotation. Unsupported citations
+   are downgraded to inconclusive. No model-reported accuracy is used.
+4. **Revise:** Conflicts and invalid citations trigger another hypothesis/review
+   round (default two, maximum three). Earlier attempts remain in the record.
+5. **Ask:** Answer the questions and re-run reasoning without watching again:
+
+```bash
+python -m unwritten analyze --observations task.workflow.observations.json \
+  --task "Describe the same task and situation" \
+  --reference reference-excerpt.txt --reference-scope "Exact scope" \
+  --answers expert-answers.json --out reviews/after-expert
+```
+
+The answers file maps **full question text** to answer text. Answers are retained
+as expert testimony, not independent verification. Existing review outputs are
+not overwritten; use a new `--out` prefix for each follow-up.
+
+**Limits:** an exact citation proves text provenance, not that the model has
+interpreted it correctly. “Supported” and “conflicts” are model assessments that
+require expert review, not compliance certifications or validated diagnoses.
+Missing video evidence does not prove a step was skipped. This workflow is an
+offline retrospective review, not a live forecasting system. Generic task support
+does not establish performance on every domain. The first real Meta video run is
+still pending; the test suite uses explicitly synthetic examples.
+
 Experienced people follow rules they've never written down: where each parcel goes,
 which returns get refurbished, what to do when the machine shows an amber light.
 Unwritten watches a video of the work, writes down every decision it sees, works out
@@ -98,6 +185,10 @@ All code in this repository was written during the building period (Oct 26 – N
 2026); see the commit history. Everything in `unwritten/` and `tests/` is new work:
 the observe/hypothesize/check/revise loop, the deterministic rule checker and OneR
 baseline, the lab notebook, the prediction player, and the Creative Commons clip helper.
+The general task workflow, reference citation checker, revision notebook and
+expert-answer reanalysis were also built during the event. A clearly labelled
+offline sample is in `examples/synthetic-workflow.html`.
+The Next.js workspace and its local Python bridge are new work too.
 
 Third-party pieces we did not write:
 
