@@ -15,6 +15,8 @@ from typing import Any, Protocol
 DEFAULT_BASE_URL = "https://api.meta.ai/v1"
 DEFAULT_MODEL = "muse-spark-1.3"
 UPLOAD_TTL_SECONDS = 7 * 24 * 3600  # uploaded clips expire after a week
+REQUEST_TIMEOUT_SECONDS = 900  # watching a clip with high reasoning effort can take minutes
+MAX_RETRIES = 4  # the SDK retries connection errors, 408/409/429 and 5xx with backoff
 
 
 class ModelClient(Protocol):
@@ -57,6 +59,8 @@ class MetaClient:
         base_url: str | None = None,
         reasoning_effort: str = "high",
         max_output_tokens: int = 32000,
+        timeout: float = REQUEST_TIMEOUT_SECONDS,
+        max_retries: int = MAX_RETRIES,
     ) -> None:
         from openai import OpenAI  # imported lazily so tests don't need it
 
@@ -69,6 +73,8 @@ class MetaClient:
         self._client = OpenAI(
             base_url=base_url or os.environ.get("MODEL_API_BASE", DEFAULT_BASE_URL),
             api_key=key,
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     def upload_video(self, path: str | Path) -> str:

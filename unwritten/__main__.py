@@ -28,7 +28,9 @@ def _observe(args) -> Path:
     print(f"Watching {src} with Muse Spark…")
     obs = observe(client, video, args.domain, args.context or "")
     obs["source"] = src
-    out = Path(args.out or Path(src).with_suffix(".observations.json").name)
+    # Local clips get their outputs next to them; URLs fall back to the current folder.
+    default = Path(src).with_suffix(".observations.json")
+    out = Path(args.out or (default if Path(src).is_file() else default.name))
     out.write_text(json.dumps(obs, indent=2, ensure_ascii=False))
     print(f"Logged {len(obs['events'])} events → {out}")
     return out
@@ -41,7 +43,7 @@ def _learn(args, obs_path: Path) -> None:
     result = run_lab(_client(), obs, domain=args.domain, source=obs.get("source", str(obs_path)),
                      train_fraction=args.train, max_rounds=args.rounds,
                      min_confidence=args.min_confidence)
-    stem = Path(obs_path).name.replace(".observations.json", "")
+    stem = Path(obs_path).parent / Path(obs_path).name.replace(".observations.json", "")
     lab = result.to_dict()
     Path(f"{stem}.lab.json").write_text(json.dumps(lab, indent=2, ensure_ascii=False))
     print(f"Notebook → {write(result, f'{stem}.lab.html')}")
@@ -89,7 +91,7 @@ def main() -> None:
         _learn(args, _observe(args))
     elif args.cmd == "play":
         lab = json.loads(Path(args.lab).read_text())
-        out = args.out or Path(args.lab).name.replace(".lab.json", "") + ".player.html"
+        out = args.out or str(Path(args.lab)).replace(".lab.json", "") + ".player.html"
         _play(lab, out, args.video or lab.get("source"))
     elif args.cmd == "fetch":
         from .fetch_clip import fetch

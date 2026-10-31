@@ -143,3 +143,16 @@ def test_player_shows_only_held_out_predictions(tmp_path):
     clip.write_bytes(b"")
     out = player.write(lab, tmp_path / "clip.player.html", clip)
     assert 'src="clip.mp4"' in out.read_text()
+
+
+def test_play_command_writes_next_to_lab_record(tmp_path, monkeypatch):
+    import sys
+    from unwritten.__main__ import main
+    lab = run_lab(FakeClient([FIXED, QUESTIONS]), obs(), log=lambda *_: None).to_dict()
+    (tmp_path / "clip.lab.json").write_text(json.dumps(lab))
+    (tmp_path / "clip.mp4").write_bytes(b"")
+    monkeypatch.chdir(Path(__file__).parent)  # run from somewhere else
+    monkeypatch.setattr(sys, "argv", ["unwritten", "play", str(tmp_path / "clip.lab.json"),
+                                      "--video", str(tmp_path / "clip.mp4")])
+    main()
+    assert 'src="clip.mp4"' in (tmp_path / "clip.player.html").read_text()

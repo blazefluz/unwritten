@@ -43,7 +43,7 @@ Output: `<clip>.lab.html` notebook + `<clip>.lab.json`.
 
 ## Status (as of Oct 31, 2026)
 - Done: engine, CLI (`observe`, `learn`, `run`, `play`, `fetch`), HTML notebook, prediction
-  player (`unwritten/player.py`), 10 offline tests (`python -m pytest -q`) using a fake model
+  player (`unwritten/player.py`), 11 offline tests (`python -m pytest -q`) using a fake model
   client and synthetic fixture data.
 - Done: public GitHub repo `blazefluz/unwritten`.
 - NOT done: first real run against Muse Spark on a real video (go/no-go test of observation accuracy).
