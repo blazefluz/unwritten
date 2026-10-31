@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from unwritten.client import _extract_json
+from unwritten import player
 from unwritten.learner import chronological_split, run_lab
 from unwritten.report import render
 from unwritten.rules import Condition, Event, OneRBaseline, RuleSet, coverage, score
@@ -117,3 +118,28 @@ def test_split_needs_enough_events():
 def test_extract_json_tolerates_wrapping():
     assert _extract_json('Here:\n```json\n{"a": 1}\n```') == {"a": 1}
     assert _extract_json('result {"a": 2} done') == {"a": 2}
+
+
+def test_zero_confidence_is_kept_not_promoted():
+    raw = obs()["events"][0]
+    assert Event.from_dict({**raw, "confidence": 0}).confidence == 0.0
+    assert Event.from_dict({k: v for k, v in raw.items() if k != "confidence"}).confidence == 1.0
+    data = obs()
+    data["events"][0]["confidence"] = 0
+    result = run_lab(FakeClient([FIXED, QUESTIONS]), data, min_confidence=0.5, log=lambda *_: None)
+    assert len(result.train) + len(result.test) == 15  # the zero-confidence event is dropped
+
+
+def test_player_shows_only_held_out_predictions(tmp_path):
+    lab = run_lab(FakeClient([FIXED, QUESTIONS]), obs(), log=lambda *_: None).to_dict()
+    lab["predictions"][0]["item"] = "box </script><b>x</b>"  # model text must not break the page
+    page = player.render(lab)
+    data = json.loads(page.split('id="lab-data">')[1].split("</script>")[0].replace("<\\/", "</"))
+    assert [p["index"] for p in data["predictions"]] == lab["split"]["test"]
+    assert all(p["time_end"] >= p["time_start"] for p in data["predictions"])
+    assert data["cut"] <= min(p["time_start"] for p in data["predictions"])
+    assert "<video" not in page  # no video: simulated clock
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(b"")
+    out = player.write(lab, tmp_path / "clip.player.html", clip)
+    assert 'src="clip.mp4"' in out.read_text()

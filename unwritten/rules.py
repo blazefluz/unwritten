@@ -48,7 +48,7 @@ class Event:
             outcome=norm(d["outcome"]),
             time_start=float(d.get("time_start", 0) or 0),
             time_end=float(d.get("time_end", 0) or 0),
-            confidence=float(d.get("confidence", 1) or 1),
+            confidence=1.0 if d.get("confidence") is None else float(d["confidence"]),
             evidence=d.get("evidence", ""),
         )
 

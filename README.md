@@ -9,8 +9,10 @@ the rules behind those decisions, checks them against what actually happened, an
 then predicts the next decisions in the video before they happen. Where the evidence
 is thin, it asks the expert targeted questions.
 
-Built for the **Meta Global AI Developer Hackathon** (Oct 27 – Nov 4, 2026),
-**Push the Frontier** / **Build for Your World**, Indie Developer track.
+Built for the **Meta Global AI Developer Hackathon** (Oct 26 – Nov 4, 2026),
+**Build for Your World** problem statement, Indie Developer track. The domain is one we
+know: a warehouse returns desk, where the choice of where each parcel goes rests on habits
+that were never written down.
 
 ## How it works
 
@@ -47,7 +49,16 @@ pip install -r requirements.txt
 export MODEL_API_KEY=...            # Meta Model API key
 
 python -m unwritten run clip.mp4 --domain sorting
-# → clip.observations.json, clip.lab.json, clip.lab.html
+# → clip.observations.json, clip.lab.json, clip.lab.html, clip.player.html
+```
+
+`clip.player.html` is the **prediction player**: it plays the clip and, for every
+held-out event, shows the rules' prediction when the item is picked up, then reveals
+where it actually went when it is placed, with a running score. Keep it next to the
+clip, or rebuild it from a lab record at any time:
+
+```bash
+python -m unwritten play clip.lab.json --video clip.mp4
 ```
 
 Two-step mode (re-run the reasoning without re-watching the video):
@@ -83,8 +94,21 @@ video**) to verify the checking, revision, prediction and baseline logic offline
 
 ## Built during the hackathon
 
-All code in this repository was written during the building period (Oct 27 – Nov 4,
-2026); see the commit history.
+All code in this repository was written during the building period (Oct 26 – Nov 4,
+2026); see the commit history. Everything in `unwritten/` and `tests/` is new work:
+the observe/hypothesize/check/revise loop, the deterministic rule checker and OneR
+baseline, the lab notebook, the prediction player, and the Creative Commons clip helper.
+
+Third-party pieces we did not write:
+
+| Component | Used for |
+|---|---|
+| Muse Spark via Meta Model API | all perception and rule hypotheses |
+| [`openai`](https://github.com/openai/openai-python) Python SDK | only as the client for Meta's OpenAI-compatible endpoint; no OpenAI models are used |
+| [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) | downloading Creative Commons clips (`fetch`) |
+| [`pytest`](https://pytest.org) | tests |
+
+Any third-party video clip is credited from the attribution file `fetch` writes.
 
 ## License
 
