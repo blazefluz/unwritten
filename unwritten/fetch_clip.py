@@ -29,7 +29,10 @@ def fetch(url: str, out_dir: str | Path = "clips", start: float | None = None,
 
     opts: dict = {
         "quiet": True,
-        "format": "mp4[height<=720]/bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/mp4",
+        # Prefer a single file that has sound, then merge separate streams; a bare
+        # "mp4" match can be video-only.
+        "format": "mp4[height<=720][acodec!=none]/bestvideo[ext=mp4][height<=720]"
+                  "+bestaudio[ext=m4a]/mp4",
         "merge_output_format": "mp4",
         "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
     }
