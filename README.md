@@ -48,6 +48,12 @@ self-reported and results should be rerun against the original local snapshot.
 
 ### Next.js workspace
 
+**[Open the free public demo](https://unwritten-demo.onrender.com).** It replays
+an actual saved Meta analysis and includes a measured cable-study development
+example. Public server operations are disabled; run locally for live analysis and
+guide checks. Free hosting can take about a minute to wake up after inactivity.
+See [deployment details](docs/deployment.md).
+
 ```bash
 npm ci --prefix web
 npm run dev
@@ -58,11 +64,13 @@ The local workspace includes source-video playback, an event timeline, linked
 reasoning and citations, reference documents, revision history, and expert-answer
 export. Open an existing `.workflow.json` with **Open review**, or choose
 **New analysis** to send a video and optional excerpts to the Python engine.
-The initial example is explicitly synthetic, not a real analysis. Attaching a
-local video to an existing review only changes playback; attach its matching
+The initial zipper-repair example is actual Meta output with an attributed CC BY
+source video; its tentative rule remains unverified. Synthetic exercises remain
+explicitly labelled. Attaching a local video to an existing review only changes playback; attach its matching
 source to use the recorded timestamps. Imported reviews and draft expert answers
 are saved in this browser across refreshes. Export backups; browser storage can
-be cleared or run out of space. Videos must be reattached after refreshing.
+be cleared or run out of space. User-attached videos must be reattached after refreshing; the bundled repair demo
+remains playable.
 
 **Decision test** works offline for event correction and human action labels.
 Import saved observations, or add events manually while watching a local video.

@@ -26,3 +26,14 @@ Verification: production build and typecheck, 51 offline Python tests, browser
 video playback/event selection/details/example navigation/export, and rejection
 of all four POST APIs in demo mode. Docker daemon was unavailable locally; the
 actual container build must additionally be verified in Render's build logs.
+
+## First deployment verified
+
+Live URL: https://unwritten-demo.onrender.com
+Service: `srv-dbkl0enf3r2c73f6rpd0`; initial deployed commit: `85ac8c8`.
+Render's container build succeeded. Public `/api/status` returned HTTP 200 with
+`demoOnly=true, ready=false`; all four POST endpoints returned 403. The public
+MP4 returned HTTP 200 and played in the browser; selecting e4 sought to 9.5s.
+No credentials were supplied to Render and the selected instance is Free ($0).
+Public-repository deployments are manual; after pushing changes, use Manual
+Deploy → Deploy latest commit in the Render dashboard.
