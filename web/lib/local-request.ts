@@ -3,6 +3,7 @@
  * Non-loopback hosts are rejected to avoid accepting rebinding/proxy origins.
  */
 export function isLocalRequest(request:Request) {
+  if (process.env.UNWRITTEN_DEMO_ONLY === "true") return false;
   const host=request.headers.get("host")?.toLowerCase();
   if(!host || !/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(host))return false;
   const origin=request.headers.get("origin");
