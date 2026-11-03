@@ -74,7 +74,7 @@ export default function DecisionTest({workflow, ready}: {workflow: Workflow; rea
     finally {setBusy(false);}
   }
   return <section className="document-view decision-view">
-    <div className="section-bar"><h2>Test the next decision</h2><span className="badge">Human labels required</span></div>
+    <div className="section-bar"><div><span className="eyebrow">Teach and test</span><h1>Test the next decision</h1></div><span className="badge">Human labels required</span></div>
     <p className="view-description">Correct the observations, name each action, then test whether rules learned from the beginning predict what happens later. Annotation works offline.</p>
     <p className="view-description">{draft.task}</p>
     <p className="form-note">Draft source: {draft.source || "Not specified"}. Edits here do not change the open review or its reference assessments.</p>
