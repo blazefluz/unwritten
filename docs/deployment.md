@@ -5,16 +5,18 @@ repository as a Docker Web Service, branch `claude/prediction-player`, repositor
 root, Free ($0) compute, Dockerfile `./Dockerfile`. Render supplies `PORT`.
 No secrets or API keys are required for the public demo.
 
-The image defaults to `UNWRITTEN_DEMO_ONLY=true`. All POST API operations are
+The image defaults to `UNWRITTEN_DEMO_ONLY=true`. By default all POST API operations are
 rejected even with a loopback Host header or an accidentally configured Meta key.
+The explicit reviewer-access gate can enable only bounded video analysis; see
+[the six-run access design](reviewer-access.md).
 The status endpoint reports ready=false. Visitors can replay the attributed CC BY
 repair video, inspect actual saved Meta output, explore supplied examples, edit
 browser drafts and export files. Server analysis, rule checks, freezes and scoring
 remain local-only. The public demo is not a multi-user backend.
 
-Do not disable demo mode on an internet-facing service: the other API guard is
-intended for loopback development, not public authentication. A live hosted mode
-needs authentication, request limits, upload isolation and durable private storage.
+Keep demo mode enabled on an internet-facing service: the other API guard is
+intended for loopback development, not public authentication. The reviewer mode adds separate authentication, upload limits and durable usage
+accounting for video analysis only. Other server tools remain local-only.
 Keep MODEL_API_KEY server-side and out of the Docker build context, Git and client
 bundles. No Meta credential has been sent to Render for this deployment.
 

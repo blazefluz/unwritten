@@ -50,8 +50,8 @@ self-reported and results should be rerun against the original local snapshot.
 
 **[Open the free public demo](https://unwritten-demo.onrender.com).** It replays
 an actual saved Meta analysis and includes a measured cable-study development
-example. Public server operations are disabled; run locally for live analysis and
-guide checks. Free hosting can take about a minute to wake up after inactivity.
+example. Live video analysis requires a private submission code with six shared uses.
+Other server operations remain local-only; see [reviewer access](docs/reviewer-access.md). Free hosting can take about a minute to wake up after inactivity.
 See [deployment details](docs/deployment.md).
 
 ```bash
