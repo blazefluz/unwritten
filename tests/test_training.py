@@ -67,6 +67,9 @@ def test_freeze_then_score_and_refuse_dataset_mutation(tmp_path):
     assert scored['scores']['consensus_before']['abstained']==2
     assert scored['scores']['consensus_after']['abstained']==0
     assert scored['scores']['direct_meta']['correct']==2
+    assert validate_frozen(frozen['id'],p,store=tmp_path)==scored
+    corrected=copy.deepcopy(p);corrected['cases'][3]['outcome']='accept'
+    with pytest.raises(ValueError):validate_frozen(frozen['id'],corrected,store=tmp_path)
     p['cases'][3]['features']['voltage']=4
     with pytest.raises(ValueError):validate_frozen(frozen['id'],p,store=tmp_path)
 

@@ -240,17 +240,28 @@ def validate_frozen(freeze_id,project,*,store):
     if any(c['outcome'] is None or not c['label_source'].strip() for c in tests.values()):
         raise ValueError('Add an attributed outcome for every frozen validation case.')
     rows=[{**r,'actual':tests[r['case_id']]['outcome'],'label_source':tests[r['case_id']]['label_source']} for r in frozen['predictions']]
+    labels_digest=digest([{'id':c['id'],'outcome':c['outcome'],'source':c['label_source']}
+                         for c in project['cases'] if c['split']=='test'])
+    recorded=Path(store)/(freeze_id+'.validation.json')
+    if recorded.exists():
+        previous=json.loads(recorded.read_text())
+        if previous.get('labels_fingerprint')!=labels_digest:
+            raise ValueError('Validation outcomes were already recorded for this guide. Preserve that result; corrections require a new, explicitly documented study.')
+        return previous
     systems=['prediction','consensus_before','consensus_after','direct_meta','majority']
     if frozen['project'].get('baseline_rule'):systems.append('declared_baseline')
     scores={key:{'correct':sum(r[key]==r['actual'] for r in rows),'total':len(rows),
                  'abstained':sum(r[key] is None for r in rows),'answered':sum(r[key] is not None for r in rows)} for key in systems}
-    return {'kind':'training_validation','guide_id':freeze_id,'guide_fingerprint':frozen['fingerprint'],
+    result={'kind':'training_validation','guide_id':freeze_id,'guide_fingerprint':frozen['fingerprint'],
+            'labels_fingerprint':labels_digest,'recorded_at':datetime.now(timezone.utc).isoformat(),
             'scores':scores,'cases':rows,'consistent_before':frozen['consistent_before'],
             'consistent_after':frozen['consistent_after'],
             'questions_answered':frozen['analysis']['answered_questions'],
             'limitations':'This is a local pilot with attributed labels, not independently verified ground truth. '
             'Expert approval is self-attested. Agreement, coverage and baseline comparisons do not establish '
             'business ROI, compliance or performance on a different operator, site or task.'}
+    with recorded.open('x',encoding='utf-8') as stream:json.dump(result,stream,indent=2)
+    return result
 
 
 def condition_text(c,labels):
