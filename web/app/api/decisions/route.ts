@@ -1,3 +1,4 @@
+import { isLocalRequest } from "@/lib/local-request";
 import { z } from "zod";
 import { observationSchema, decisionSchema } from "@/lib/decisions";
 import { runPython } from "@/lib/python";
@@ -7,7 +8,7 @@ const inputSchema = z.object({observation: observationSchema,
   labels: z.record(z.string(), z.string().trim().min(1).max(100)),
   train_fraction: z.number().min(0.2).max(0.8)});
 export async function POST(request: Request) {
-  if (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin)
+  if (!isLocalRequest(request))
     return Response.json({error: "Open the local app to run a test."}, {status: 403});
   if (!process.env.MODEL_API_KEY)
     return Response.json({error: "Meta API setup is needed. Your annotations can be saved offline."}, {status: 503});

@@ -1,3 +1,4 @@
+import { isLocalRequest } from "@/lib/local-request";
 import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
@@ -7,8 +8,7 @@ import { workflowSchema } from "@/lib/workflow";
 export const runtime = "nodejs";
 export const maxDuration = 900;
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin)
+  if (!isLocalRequest(request))
     return Response.json({error: "Open the app locally to start an analysis."}, {status: 403});
   if (!process.env.MODEL_API_KEY)
     return Response.json({error: "Meta API is not configured. Set MODEL_API_KEY in web/.env.local and restart the app."}, {status: 503});

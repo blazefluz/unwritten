@@ -1,3 +1,4 @@
+import { isLocalRequest } from "@/lib/local-request";
 import { z } from "zod";
 import { projectSchema, studySchema } from "@/lib/training";
 import { runPython } from "@/lib/python";
@@ -7,7 +8,7 @@ const schema=z.object({action:z.enum(["propose","inspect","freeze","validate"]),
   study:studySchema.optional(),rule_id:z.string().max(100).optional(),reviewer:z.string().max(1000).optional(),
   review_note:z.string().max(8000).optional(),approval_type:z.enum(["demo","expert_attestation"]).optional(),freeze_id:z.string().uuid().optional()});
 export async function POST(request:Request) {
-  if(request.headers.get("origin")&&request.headers.get("origin")!==new URL(request.url).origin)
+  if(!isLocalRequest(request))
     return Response.json({error:"Open the local app to work on a guide."},{status:403});
   try {
     const raw=await request.text();if(raw.length>2_000_000)return Response.json({error:"Guide input is too large."},{status:413});

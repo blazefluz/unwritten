@@ -1,3 +1,4 @@
+import { isLocalRequest } from "@/lib/local-request";
 import { z } from "zod";
 import { workflowSchema } from "@/lib/workflow";
 import { runPython } from "@/lib/python";
@@ -5,7 +6,7 @@ export const runtime = "nodejs";
 export const maxDuration = 900;
 const schema = z.object({workflow: workflowSchema, answers: z.record(z.string().max(8000), z.string().max(8000))});
 export async function POST(request: Request) {
-  if (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin)
+  if (!isLocalRequest(request))
     return Response.json({error: "Open the local app to review answers."}, {status: 403});
   if (!process.env.MODEL_API_KEY)
     return Response.json({error: "Meta API setup is needed. Save your answers for now."}, {status: 503});
