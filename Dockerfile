@@ -13,6 +13,7 @@ WORKDIR /app
 RUN python3 -m venv .venv && .venv/bin/pip install --no-cache-dir 'openai>=1.60'
 COPY unwritten/ ./unwritten/
 COPY examples/ ./examples/
+COPY evaluation/training-cable-final.session.json ./evaluation/training-cable-final.session.json
 COPY evaluation/zipper-pilot/workflow.json ./evaluation/zipper-pilot/workflow.json
 COPY --from=build /app/web/.next ./web/.next
 COPY --from=build /app/web/node_modules ./web/node_modules

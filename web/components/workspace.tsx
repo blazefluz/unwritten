@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowDownToLine, ArrowLeft, ArrowRight, BookOpen, Check, CheckCheck, ChevronRight, CircleHelp, Clock3, FileText, Film, FolderOpen, History, Layers3, LoaderCircle, MessageSquare, Pause, Play, Plus, ScanLine, Sparkles, Upload, X } from "lucide-react";
 import { time, Workflow, workflowSchema } from "@/lib/workflow";
+import EvidenceTag from "./evidence-tag";
 import DecisionTest from "./decision-test";
 import TrainingStudio from "./training-studio";
 import { TrainingProject, TrainingSession } from "@/lib/training";
@@ -11,7 +12,7 @@ type View = "guide" | "review" | "references" | "history" | "questions" | "decis
 const navigation = [
   {id: "guide" as View, title: "Training guide", Icon: BookOpen},
   {id: "review" as View, title: "Review", Icon: ScanLine},
-  {id: "references" as View, title: "References", Icon: BookOpen},
+  {id: "references" as View, title: "References", Icon: FileText},
   {id: "history" as View, title: "Revision history", Icon: History},
   {id: "questions" as View, title: "Expert questions", Icon: MessageSquare},
   {id: "decisions" as View, title: "Decision test", Icon: CheckCheck},
@@ -22,9 +23,9 @@ function download(value: unknown, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function Workspace({initial, guideExamples}: {initial: Workflow; guideExamples:{cableProject:TrainingProject;syntheticSession:TrainingSession}}) {
+export default function Workspace({initial, guideExamples, demoOnly=false}: {demoOnly?:boolean;initial: Workflow; guideExamples:{cableProject:TrainingProject;syntheticSession:TrainingSession;cableSession:TrainingSession}}) {
   const [data, setData] = useState(initial);
-  const [view, setView] = useState<View>("guide");
+  const [view, setView] = useState<View>("review");
   const [selected, setSelected] = useState(0);
   const [videoUrl, setVideoUrl] = useState("");
   const [videoName, setVideoName] = useState("");
@@ -46,7 +47,7 @@ export default function Workspace({initial, guideExamples}: {initial: Workflow; 
   const importInput = useRef<HTMLInputElement>(null);
   const attachInput = useRef<HTMLInputElement>(null);
   const synthetic = /synthetic/i.test(data.task + data.source);
-  const title = synthetic ? data.task.replace(/^SYNTHETIC OFFLINE DEMO\s*[—–-]\s*/i, "") : data.task;
+  const title = data.source === "k_YyHODQ-oI.mp4" ? "Three zipper repairs, one inferred rule" : synthetic ? data.task.replace(/^SYNTHETIC OFFLINE DEMO\s*[—–-]\s*/i, "") : data.task;
   const event = data.events[selected];
   const questions = data.final.hypotheses.filter(h => h.expert_question.trim());
   const linked = data.final.hypotheses.filter(h => h.event_ids.includes(event.id));
@@ -70,6 +71,15 @@ export default function Workspace({initial, guideExamples}: {initial: Workflow; 
     try {localStorage.setItem("unwritten-workspace-v1", JSON.stringify({workflow: {...data, expert_answers: answers}}));}
     catch {setError("Browser storage is unavailable or full. Export your review and answers to save your work.");}
   }, [data, answers, restored]);
+  useEffect(() => {
+    if (restored && data.source === "k_YyHODQ-oI.mp4" && !videoUrl) {
+      setVideoUrl("/demo/zipper.mp4"); setVideoName("Clothes Doctor · zipper repairs");
+    }
+  }, [restored, data.source, videoUrl]);
+  function loadDemo() {
+    setData(initial); setSelected(0); setAnswers(initial.expert_answers); setVideoUrl("/demo/zipper.mp4");
+    setVideoName("Clothes Doctor · zipper repairs"); setView("review"); setError(""); setPreviewOnly(false); setCurrentTime(0);
+  }
   async function reviewAnswers() {
     setReviewing(true); setError("");
     try {
@@ -117,6 +127,7 @@ export default function Workspace({initial, guideExamples}: {initial: Workflow; 
     <aside className="sidebar">
       <a className="wordmark" href="/" aria-label="Unwritten home"><span className="brand-symbol"><span/><span/><span/></span>unwritten<span className="brand-period">.</span></a>
       <button className="new-button" onClick={() => {setView("new"); setError("");}}><Plus size={17}/>New analysis</button>
+      <button className="demo-link" onClick={loadDemo}><Play size={14}/>Watch repair demo</button>
       <nav aria-label="Workspace">{navigation.map(({id, title: label, Icon}) => <button key={id} className={view === id ? "nav-item active" : "nav-item"} onClick={() => setView(id)}><Icon size={18}/>{label}{id === "questions" && <span className="nav-count">{questions.length}</span>}</button>)}</nav>
       <div className="sidebar-section"><span className="sidebar-heading">Open review</span><button className="session-item" onClick={() => setView("review")}><span className="session-dot"/><span>{title}</span></button><span className="session-caption">{synthetic ? "Synthetic example" : "Workflow analysis"}</span></div>
       <div className="sidebar-bottom"><div className="engine-mark"><Layers3 size={17}/><div>Powered by Meta<span>Muse Spark</span></div></div><p>Your observations.<br/>The reasoning behind them.</p></div>
@@ -125,10 +136,17 @@ export default function Workspace({initial, guideExamples}: {initial: Workflow; 
       <header className="topbar"><div className="breadcrumb">Workspace<ChevronRight size={14}/><span>{view === "new" ? "New analysis" : navigation.find(n => n.id === view)?.title}</span></div><div className="header-actions" hidden={view === "guide"}><button className="button text-button" onClick={() => importInput.current?.click()}><FolderOpen size={16}/><span>Open review</span></button><button className="button" onClick={() => download({...data, expert_answers: answers}, "unwritten.workflow.json")}><ArrowDownToLine size={15}/><span>Export JSON</span></button></div></header>
       <input ref={importInput} type="file" accept=".json,application/json" className="visually-hidden" aria-label="Open workflow JSON" onChange={e => {void importReview(e.target.files?.[0]); e.target.value = "";}}/>
       <main id="workspace" tabIndex={-1}>
+        {demoOnly && <div className="hosted-notice"><span className="badge">Public demo</span><p>Explore a real Meta analysis and saved examples. Server analysis and guide operations are disabled here; you can inspect examples and export browser drafts.</p><a href="https://github.com/blazefluz/unwritten" target="_blank" rel="noreferrer">Run locally<ArrowRight size={14}/></a></div>}
         {error && <div className="error-message" role="alert"><CircleHelp size={18}/><span>{error}</span><button aria-label="Dismiss error" onClick={() => setError("")}><X size={17}/></button></div>}
-        {view !== "new" && view !== "decisions" && view !== "guide" && <><div className="page-heading"><div><div className="title-row"><h1>{title}</h1>{synthetic && <span className="badge sample">Synthetic example</span>}</div><p>Understand the decisions. Follow the evidence.</p></div><span className="review-state"><span/>Ready for expert review</span></div>
+        {view !== "new" && view !== "decisions" && view !== "guide" && <><div className="page-heading"><div><div className="title-row"><h1>{title}</h1>{synthetic && <span className="badge sample">Synthetic example</span>}</div><p>Source video → observed actions → tentative rules → expert review</p></div><span className="review-state"><span/>{questions.filter(h=>!answers[h.expert_question]?.trim()).length} expert questions unanswered</span></div>
         {synthetic && <div className="sample-notice"><Sparkles size={15}/><span>This example uses scripted data. It is not a real video analysis.</span></div>}</>}
         {view === "review" && <>
+          <div className="review-summary" aria-label="Analysis summary">
+            <div><strong>{data.events.length}</strong><span>Observed actions</span></div>
+            <div><strong>{data.final.hypotheses.length}</strong><span>Tentative {data.final.hypotheses.length===1?"rule":"rules"}</span></div>
+            <div><strong>{data.events.filter(e=>data.final.hypotheses.some(h=>h.event_ids.includes(e.id))).length}/{data.events.length}</strong><span>Actions linked to a rule</span></div>
+            <div><strong>{questions.length}</strong><span>Questions for an expert</span></div>
+          </div>
           <div className="review-grid">
             <section className="observation-column" aria-label="Source video and observed events">
               <div className="section-bar"><h2><Film size={17}/>Source video</h2><button className="small-button" onClick={() => attachInput.current?.click()}><Upload size={14}/>{videoUrl ? "Replace video" : "Attach video"}</button></div>
@@ -136,11 +154,13 @@ export default function Workspace({initial, guideExamples}: {initial: Workflow; 
               <div className={videoUrl ? "video-stage has-video" : "video-stage"}>
                 {videoUrl ? <video ref={video} src={videoUrl} controls onLoadedMetadata={e => {e.currentTarget.currentTime = currentTime;}} onTimeUpdate={e => setCurrentTime(e.currentTarget.currentTime)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onError={() => setError("This video couldn't be played. Choose another MP4 file.")}/> : <div className="video-empty"><div className="empty-film"><Film size={32} strokeWidth={1.25}/></div><h3>A closer look starts here.</h3><p>{synthetic ? "This synthetic example has no source video." : "Attach the original video to revisit each observation."}</p><button className="button" onClick={() => attachInput.current?.click()}><Plus size={15}/>Choose local video</button></div>}
               </div>
-              <div className="video-footer"><div><button className="icon-button" disabled={!videoUrl} aria-label={playing ? "Pause video" : "Play video"} onClick={() => {if (video.current) {if (playing) video.current.pause(); else void video.current.play().catch(() => setError("Playback could not start. Use the video's play control."));}}}>{playing ? <Pause size={15}/> : <Play size={15}/>}</button><span className="timestamp">{time(currentTime)}</span></div><span className="source-name" title={videoName || data.source}>{videoName || "No video attached"}</span><span className="file-type">MP4</span></div>
+              <div className="video-footer"><div><span className="timestamp">{time(currentTime)}</span></div><span className="source-name" title={videoName || data.source}>{videoName || "No video attached"}</span><span className="file-type">MP4</span></div>
+              {data.source === "k_YyHODQ-oI.mp4" && <p className="video-attribution"><a href="https://www.youtube.com/watch?v=k_YyHODQ-oI" target="_blank" rel="noreferrer">Clothes Doctor × Zalando · How To Fix A Zip</a><br/><a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noreferrer">CC BY</a> · clip 0–1:20, resized and compressed. No endorsement implied.</p>}
               {previewOnly && <p className="preview-note">Local playback only. Attach the matching source; recorded observations stay unchanged.</p>}
+              <div className="observed-evidence"><EvidenceTag kind="observed"/><h3>What is visible</h3><p>{event.visible_evidence}</p>{event.speaker_explanation && <><EvidenceTag kind="testimony"/><h3>Speaker’s explanation</h3><p>{event.speaker_explanation}</p></>}{event.uncertainties.length > 0 && <div className="uncertainty"><CircleHelp size={15}/><span>{event.uncertainties.join(" ")}</span></div>}</div>
               <div className="section-bar timeline-heading"><h2><Clock3 size={17}/>Observed actions <span className="count">{data.events.length}</span></h2><span className="subtle">Select an event to inspect</span></div>
               <div className="event-list">{data.events.map((ev, index) => <button key={ev.id} className={index === selected ? "event-row selected" : "event-row"} aria-pressed={index === selected} onClick={() => pick(index)}><span className="event-time">{time(ev.time_start)}<span>{time(ev.time_end)}</span></span><span className="event-body"><strong>{ev.action}</strong><span>{ev.observed_result}</span></span><ChevronRight size={16}/></button>)}</div>
-              <div className="observed-evidence"><h3>What is visible</h3><p>{event.visible_evidence}</p>{event.speaker_explanation && <><h3>Speaker’s explanation · testimony</h3><p>{event.speaker_explanation}</p></>}{event.uncertainties.length > 0 && <div className="uncertainty"><CircleHelp size={15}/><span>{event.uncertainties.join(" ")}</span></div>}</div>
+
             </section>
             <section className="reasoning-column" aria-label="Reasoning for selected event">
               <div className="section-bar"><h2><ScanLine size={17}/>Behind the decision</h2><span className="count">{linked.length}</span></div>
@@ -148,15 +168,15 @@ export default function Workspace({initial, guideExamples}: {initial: Workflow; 
               {linked.length === 0 ? <div className="panel-empty"><CircleHelp size={26}/><h3>No principle linked yet</h3><p>This event has observations, but no inferred decision principle.</p></div> : linked.map(h => {
                 const review = data.final.reviews.find(r => r.hypothesis_id === h.id);
                 return <article className="principle" key={h.id}>
-                  <div className="principle-heading"><span className="hypothesis-label">Inferred principle</span><span className={`badge ${review?.assessment || "inconclusive"}`}>{review?.assessment === "supported" ? <Check size={12}/> : <CircleHelp size={12}/>} Model assessment: {review?.assessment || "Not reviewed"}</span></div>
-                  <h3>{h.claim}</h3><p className="reasoning-copy">{h.reasoning}</p>
+                  <div className="principle-heading"><EvidenceTag kind="inferred"/><span className={`badge ${review?.assessment || "inconclusive"}`}>{review?.assessment === "supported" ? <Check size={12}/> : <CircleHelp size={12}/>} Model assessment: {review?.assessment || "Not reviewed"}</span></div>
+                  <h3>{h.claim}</h3>{h.expert_question && <div className="expert-prompt"><MessageSquare size={17}/><div><strong>Ask the expert</strong><p>{h.expert_question}</p><button onClick={() => setView("questions")}>Add an answer <ArrowRight size={14}/></button></div></div>}<details className="reasoning-detail"><summary>Why this rule was inferred</summary><p className="reasoning-copy">{h.reasoning}</p></details>
                   <details className="alternatives"><summary>Alternative explanations <span>{h.alternatives.length}</span></summary><ul>{h.alternatives.map((a,i) => <li key={i}>{a}</li>)}</ul></details>
                   <div className="citation-heading"><BookOpen size={15}/><h4>Reference check</h4></div>
                   <p className="check-explanation">{review?.explanation || "No assessment is available for this principle."}</p>
                   {review?.citations.map((c, i) => <div className="citation" key={i}><button onClick={() => setView("references")}><FileText size={15}/><span>{data.references.find(r => r.id === c.reference_id)?.title || c.reference_id}</span><ArrowRight size={14}/></button><blockquote>“{c.quote}”</blockquote><div className="citation-meta"><span>Lines {c.line_start}–{c.line_end}</span><span>{c.valid ? <><CheckCheck size={13}/>Exact citation</> : "Citation could not be validated"}</span></div></div>)}
                   {review?.applicability && <details className="applicability"><summary>Applicability</summary><p>{review.applicability}</p></details>}
                   {!!review?.validation_errors.length && <div className="validation-errors">{review.validation_errors.join(" ")}</div>}
-                  {h.expert_question && <div className="expert-prompt"><MessageSquare size={17}/><div><strong>Ask the expert</strong><p>{h.expert_question}</p><button onClick={() => setView("questions")}>Add an answer <ArrowRight size={14}/></button></div></div>}
+
                 </article>;
               })}
               <p className="review-footnote"><CircleHelp size={14}/>Model assessments need expert review. An exact citation confirms the source text, not the interpretation.</p>
@@ -169,7 +189,7 @@ export default function Workspace({initial, guideExamples}: {initial: Workflow; 
         {view === "questions" && <section className="document-view"><div className="section-bar"><h2>The parts only an expert can explain</h2><button className="button" disabled={!Object.values(answers).some(a => a.trim())} onClick={() => download(Object.fromEntries(Object.entries(answers).filter(([,v]) => v.trim())), "expert-answers.json")}><ArrowDownToLine size={15}/>Export answers</button></div><p className="view-description">Your answers are testimony and are saved in this browser. Re-review with Meta to update the hypotheses while keeping earlier rounds in history.</p><div className="decision-actions"><button className="button primary-button" disabled={!ready || reviewing || !Object.values(answers).some(a => a.trim())} onClick={() => void reviewAnswers()}>{reviewing ? "Reviewing answers…" : "Re-review with Meta"}</button>{!ready && <span className="form-note">Meta API setup is pending. You can save and export answers now.</span>}</div>{questions.length ? questions.map((h,i) => <div className="question-block" key={h.id}><span className="question-index">{String(i+1).padStart(2,"0")}</span><div><h3>{h.expert_question}</h3><p>About: {h.claim}</p><label className="visually-hidden" htmlFor={`answer-${i}`}>Answer to {h.expert_question}</label><textarea id={`answer-${i}`} placeholder="Share the evidence or context behind this decision…" disabled={reviewing} maxLength={8000} value={answers[h.expert_question] || ""} onChange={e => setAnswers({...answers, [h.expert_question]: e.target.value})}/></div></div>) : <div className="panel-empty"><MessageSquare size={28}/><h3>No expert questions</h3><p>This analysis did not return any questions.</p></div>}</section>}
         {view === "new" && <section className="new-analysis"><button className="back-link" onClick={() => setView("review")}><ArrowLeft size={15}/>Back to review</button><h1>Every expert has a way.</h1><p className="new-intro">Watch their work. Uncover the decisions.<br/>Check the reasoning against what you know.</p><form onSubmit={e => {e.preventDefault(); void analyze();}}><fieldset disabled={busy}><label className="field-label" htmlFor="task">What are we observing?</label><textarea id="task" required maxLength={8000} placeholder="Describe the task, equipment, situation, and intended outcome." value={task} onChange={e => setTask(e.target.value)}/><div className="upload-fields"><label className="upload-area"><Film size={25}/><strong>{taskVideo?.name || "Add a work video"}</strong><span>MP4 · up to 100 MB</span><input type="file" accept="video/mp4,.mp4" required onChange={e => setTaskVideo(e.target.files?.[0] || null)}/></label><label className="upload-area"><BookOpen size={25}/><strong>{references.length ? `${references.length} references selected` : "Add reference excerpts"}</strong><span>TXT or Markdown · optional</span><input type="file" accept=".txt,.md" multiple onChange={e => setReferences(Array.from(e.target.files || []))}/></label></div><label className="field-label" htmlFor="transcript">Narration transcript <span>Optional</span></label><input id="transcript" type="file" accept=".txt,.md" onChange={e => setTranscript(e.target.files?.[0] || null)}/><p className="form-note">Timestamped captions help distinguish visible actions from the speaker’s explanation. Use times relative to this clip and label automatic captions.</p><label className="field-label" htmlFor="scope">Reference applicability <span>Optional</span></label><input id="scope" className="text-input" maxLength={8000} placeholder="Document title, issuer, equipment model, and edition" value={scope} onChange={e => setScope(e.target.value)}/><p className="form-note">Video and references are sent to Meta when you start. Use material you have permission to share.</p>{!ready && <div className="api-notice"><CircleHelp size={18}/><p><strong>Meta API setup is needed</strong><br/>Add MODEL_API_KEY to web/.env.local and restart the app. You can open a saved review while API access is pending.</p></div>}<button className="button primary-button start-analysis" disabled={!ready || !taskVideo || !task.trim()}>{busy ? <><LoaderCircle className="spin" size={17}/>Analyzing with Muse Spark…</> : <>Start analysis<ArrowRight size={17}/></>}</button>{busy && <p className="form-note" role="status">Watching the video and reviewing evidence. This can take several minutes. Keep this page open.</p>}</fieldset></form></section>}
         <div hidden={view !== "decisions"}><DecisionTest workflow={data} ready={ready}/></div>
-        <div hidden={view !== "guide"}><TrainingStudio workflow={data} ready={ready} {...guideExamples}/></div>
+        <div hidden={view !== "guide"}><TrainingStudio demoOnly={demoOnly} workflow={data} ready={ready} {...guideExamples}/></div>
       </main>
     </div>
   </div>;
