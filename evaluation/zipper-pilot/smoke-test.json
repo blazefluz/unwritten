@@ -1,0 +1,10 @@
+{
+  "events": 10,
+  "hypotheses": 1,
+  "events_linked_to_hypotheses": 5,
+  "references": 0,
+  "expert_answers": 0,
+  "ui_export_matches_server": true,
+  "video_sha256": "79fbf771ad6228d2d353643549f97384ce3bcfd21427db70db8721a8d2b947d0",
+  "accuracy_measured": false
+}

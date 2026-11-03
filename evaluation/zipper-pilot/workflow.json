@@ -1,0 +1,187 @@
+{
+  "kind": "workflow_analysis",
+  "task": "Observe the distinct zipper repairs demonstrated on bags and a garment. Separate visible actions from spoken explanations. Infer only tentative principles about choosing a repair from the observed problem; do not invent hidden diagnoses or claim professional verification.",
+  "source": "k_YyHODQ-oI.mp4",
+  "transcript": null,
+  "events": [
+    {
+      "action": "Operating zipper on black backpack left pocket",
+      "id": "e1",
+      "observed_result": "Zipper slider moves along teeth and pocket opens and closes",
+      "speaker_explanation": "",
+      "time_end": 1.8,
+      "time_start": 0.0,
+      "uncertainties": [],
+      "visible_evidence": "Two hands contacting a black backpack on a wooden table, pulling a corded zipper pull on the left front pocket"
+    },
+    {
+      "action": "Displaying small pull component next to bare slider on right pocket",
+      "id": "e2",
+      "observed_result": "Right pocket slider is visible without attached pull while a small metal and cord piece is held in fingers nearby",
+      "speaker_explanation": "",
+      "time_end": 4.8,
+      "time_start": 1.8,
+      "uncertainties": [
+        "Whether the held piece is original or replacement is unknown"
+      ],
+      "visible_evidence": "Close-up of black backpack with two front zippered pockets, left pocket with pull attached, right pocket slider bare, fingers holding a small zipper pull"
+    },
+    {
+      "action": "Cutting dark flexible material with scissors",
+      "id": "e3",
+      "observed_result": "A strip is separated from the larger piece of dark material",
+      "speaker_explanation": "",
+      "time_end": 9.5,
+      "time_start": 5.0,
+      "uncertainties": [
+        "Material type and intended use of cut strip are unknown"
+      ],
+      "visible_evidence": "Left hand holding folded dark gray material, right hand operating large scissors with light handles to cut along edge"
+    },
+    {
+      "action": "Threading and knotting a pull through right pocket slider",
+      "id": "e4",
+      "observed_result": "A thin strip is looped through the slider hole and secured with a knot, hanging as a pull",
+      "speaker_explanation": "",
+      "time_end": 18.5,
+      "time_start": 9.5,
+      "uncertainties": [],
+      "visible_evidence": "Hands feeding a thin light then dark strip through the metal slider on the black backpack right pocket and manipulating it into a knot"
+    },
+    {
+      "action": "Testing zipper and trimming excess",
+      "id": "e5",
+      "observed_result": "Zipper opens and closes by the new pull; excess length is cut off",
+      "speaker_explanation": "",
+      "time_end": 24.0,
+      "time_start": 18.5,
+      "uncertainties": [],
+      "visible_evidence": "Hand pulling the newly attached strip to move the slider, then using scissors to trim the end near the knot"
+    },
+    {
+      "action": "Hand sewing along zipper area of tan bag",
+      "id": "e6",
+      "observed_result": "Needle and thread pass repeatedly through the edge of the tan bag near the zipper tape",
+      "speaker_explanation": "",
+      "time_end": 45.5,
+      "time_start": 24.5,
+      "uncertainties": [
+        "Stitch type and condition being addressed are unknown"
+      ],
+      "visible_evidence": "Hands holding a tan duffle-style bag open, manipulating a needle with light-colored thread along the zipper edge, pulling thread through"
+    },
+    {
+      "action": "Manipulating metal zipper slider on gray garment",
+      "id": "e7",
+      "observed_result": "Slider moves down the teeth and fabric edges are aligned by hand",
+      "speaker_explanation": "",
+      "time_end": 50.5,
+      "time_start": 46.0,
+      "uncertainties": [],
+      "visible_evidence": "Fingers contacting a silver metal zipper on light gray quilted fabric, moving the slider and adjusting the two sides of the zipper tape"
+    },
+    {
+      "action": "Sewing gray garment with electric sewing machine",
+      "id": "e8",
+      "observed_result": "Fabric feeds under the needle while stitching occurs",
+      "speaker_explanation": "",
+      "time_end": 66.5,
+      "time_start": 51.0,
+      "uncertainties": [
+        "Exact seam location relative to zipper is unknown"
+      ],
+      "visible_evidence": "Person in white shirt guiding light gray fabric under the needle of a white sewing machine on a wooden table, hands repositioning fabric during sewing"
+    },
+    {
+      "action": "Trimming thread on gray garment",
+      "id": "e9",
+      "observed_result": " loose thread ends are cut from the fabric near the zipper",
+      "speaker_explanation": "",
+      "time_end": 71.0,
+      "time_start": 67.0,
+      "uncertainties": [],
+      "visible_evidence": "Hands holding gray fabric next to sewing machine, using small scissors to snip threads"
+    },
+    {
+      "action": "Demonstrating finished gray garment zipper",
+      "id": "e10",
+      "observed_result": "Zipper moves from bottom to top and top to bottom, closing and opening the front",
+      "speaker_explanation": "",
+      "time_end": 75.0,
+      "time_start": 71.5,
+      "uncertainties": [],
+      "visible_evidence": "Person holding up a light gray quilted zip-front jacket and pulling the zipper slider up and down with one hand"
+    }
+  ],
+  "references": [],
+  "expert_answers": {},
+  "attempts": [
+    {
+      "hypotheses": [
+        {
+          "alternatives": [
+            "The small piece held in e2 could be the original detached pull shown for comparison, with the cut strip in e3-e4 being an improvised substitute for filming, not evidence of a general selection rule.",
+            "The looped strip could be a temporary demonstration prop rather than a durable repair, since brief movement in e5 alone does not establish continued function without expert inspection."
+          ],
+          "claim": "Tentative hypothesis: when the observable condition is a slider still present on teeth but without a usable pull, the demonstrated approach is to loop and secure a flexible strip through the slider to operate it.",
+          "event_ids": [
+            "e1",
+            "e2",
+            "e3",
+            "e4",
+            "e5"
+          ],
+          "expert_question": "What visible features would allow an expert to conclude that adding a replacement pull alone is sufficient in this bare-slider case versus requiring slider or chain work, and are those features actually visible here?",
+          "id": "h1",
+          "reasoning": "Visible observations: e1 shows left pocket slider with pull moving; e2 shows right pocket slider bare while fingers hold a small pull-like piece nearby; e3-e4 show cutting a dark material and looping/knotting a strip through the right-pocket slider; e5 shows slider moved via the new strip then trimmed. Inferred intent (not speaker-stated): addressing the absent pull. No speaker explanation, transcript, or expert testimony was provided, so all intent and selection logic is observer-inferred. No claim about material type, original vs replacement status of held piece, or internal slider condition."
+        }
+      ],
+      "reviews": [
+        {
+          "hypothesis_id": "h1",
+          "proposed_assessment": "inconclusive",
+          "assessment": "inconclusive",
+          "explanation": "No references supplied; this inference has not been checked.",
+          "applicability": "No reference available.",
+          "citations": [],
+          "validation_errors": [],
+          "human_review_required": true
+        }
+      ]
+    }
+  ],
+  "final": {
+    "hypotheses": [
+      {
+        "alternatives": [
+          "The small piece held in e2 could be the original detached pull shown for comparison, with the cut strip in e3-e4 being an improvised substitute for filming, not evidence of a general selection rule.",
+          "The looped strip could be a temporary demonstration prop rather than a durable repair, since brief movement in e5 alone does not establish continued function without expert inspection."
+        ],
+        "claim": "Tentative hypothesis: when the observable condition is a slider still present on teeth but without a usable pull, the demonstrated approach is to loop and secure a flexible strip through the slider to operate it.",
+        "event_ids": [
+          "e1",
+          "e2",
+          "e3",
+          "e4",
+          "e5"
+        ],
+        "expert_question": "What visible features would allow an expert to conclude that adding a replacement pull alone is sufficient in this bare-slider case versus requiring slider or chain work, and are those features actually visible here?",
+        "id": "h1",
+        "reasoning": "Visible observations: e1 shows left pocket slider with pull moving; e2 shows right pocket slider bare while fingers hold a small pull-like piece nearby; e3-e4 show cutting a dark material and looping/knotting a strip through the right-pocket slider; e5 shows slider moved via the new strip then trimmed. Inferred intent (not speaker-stated): addressing the absent pull. No speaker explanation, transcript, or expert testimony was provided, so all intent and selection logic is observer-inferred. No claim about material type, original vs replacement status of held piece, or internal slider condition."
+      }
+    ],
+    "reviews": [
+      {
+        "hypothesis_id": "h1",
+        "proposed_assessment": "inconclusive",
+        "assessment": "inconclusive",
+        "explanation": "No references supplied; this inference has not been checked.",
+        "applicability": "No reference available.",
+        "citations": [],
+        "validation_errors": [],
+        "human_review_required": true
+      }
+    ]
+  },
+  "limitations": "Model interpretations require expert review. Code checks citation provenance and event structure, not factual or diagnostic accuracy."
+}
