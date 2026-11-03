@@ -4,9 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowDownToLine, ArrowLeft, ArrowRight, BookOpen, Check, CheckCheck, ChevronRight, CircleHelp, Clock3, FileText, Film, FolderOpen, History, Layers3, LoaderCircle, MessageSquare, Pause, Play, Plus, ScanLine, Sparkles, Upload, X } from "lucide-react";
 import { time, Workflow, workflowSchema } from "@/lib/workflow";
 import DecisionTest from "./decision-test";
+import TrainingStudio from "./training-studio";
+import { TrainingProject, TrainingSession } from "@/lib/training";
 
-type View = "review" | "references" | "history" | "questions" | "decisions" | "new";
+type View = "guide" | "review" | "references" | "history" | "questions" | "decisions" | "new";
 const navigation = [
+  {id: "guide" as View, title: "Training guide", Icon: BookOpen},
   {id: "review" as View, title: "Review", Icon: ScanLine},
   {id: "references" as View, title: "References", Icon: BookOpen},
   {id: "history" as View, title: "Revision history", Icon: History},
@@ -19,9 +22,9 @@ function download(value: unknown, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function Workspace({initial}: {initial: Workflow}) {
+export default function Workspace({initial, guideExamples}: {initial: Workflow; guideExamples:{cableProject:TrainingProject;syntheticSession:TrainingSession}}) {
   const [data, setData] = useState(initial);
-  const [view, setView] = useState<View>("review");
+  const [view, setView] = useState<View>("guide");
   const [selected, setSelected] = useState(0);
   const [videoUrl, setVideoUrl] = useState("");
   const [videoName, setVideoName] = useState("");
@@ -123,7 +126,7 @@ export default function Workspace({initial}: {initial: Workflow}) {
       <input ref={importInput} type="file" accept=".json,application/json" className="visually-hidden" aria-label="Open workflow JSON" onChange={e => {void importReview(e.target.files?.[0]); e.target.value = "";}}/>
       <main id="workspace" tabIndex={-1}>
         {error && <div className="error-message" role="alert"><CircleHelp size={18}/><span>{error}</span><button aria-label="Dismiss error" onClick={() => setError("")}><X size={17}/></button></div>}
-        {view !== "new" && view !== "decisions" && <><div className="page-heading"><div><div className="title-row"><h1>{title}</h1>{synthetic && <span className="badge sample">Synthetic example</span>}</div><p>Understand the decisions. Follow the evidence.</p></div><span className="review-state"><span/>Ready for expert review</span></div>
+        {view !== "new" && view !== "decisions" && view !== "guide" && <><div className="page-heading"><div><div className="title-row"><h1>{title}</h1>{synthetic && <span className="badge sample">Synthetic example</span>}</div><p>Understand the decisions. Follow the evidence.</p></div><span className="review-state"><span/>Ready for expert review</span></div>
         {synthetic && <div className="sample-notice"><Sparkles size={15}/><span>This example uses scripted data. It is not a real video analysis.</span></div>}</>}
         {view === "review" && <>
           <div className="review-grid">
@@ -166,6 +169,7 @@ export default function Workspace({initial}: {initial: Workflow}) {
         {view === "questions" && <section className="document-view"><div className="section-bar"><h2>The parts only an expert can explain</h2><button className="button" disabled={!Object.values(answers).some(a => a.trim())} onClick={() => download(Object.fromEntries(Object.entries(answers).filter(([,v]) => v.trim())), "expert-answers.json")}><ArrowDownToLine size={15}/>Export answers</button></div><p className="view-description">Your answers are testimony and are saved in this browser. Re-review with Meta to update the hypotheses while keeping earlier rounds in history.</p><div className="decision-actions"><button className="button primary-button" disabled={!ready || reviewing || !Object.values(answers).some(a => a.trim())} onClick={() => void reviewAnswers()}>{reviewing ? "Reviewing answers…" : "Re-review with Meta"}</button>{!ready && <span className="form-note">Meta API setup is pending. You can save and export answers now.</span>}</div>{questions.length ? questions.map((h,i) => <div className="question-block" key={h.id}><span className="question-index">{String(i+1).padStart(2,"0")}</span><div><h3>{h.expert_question}</h3><p>About: {h.claim}</p><label className="visually-hidden" htmlFor={`answer-${i}`}>Answer to {h.expert_question}</label><textarea id={`answer-${i}`} placeholder="Share the evidence or context behind this decision…" disabled={reviewing} maxLength={8000} value={answers[h.expert_question] || ""} onChange={e => setAnswers({...answers, [h.expert_question]: e.target.value})}/></div></div>) : <div className="panel-empty"><MessageSquare size={28}/><h3>No expert questions</h3><p>This analysis did not return any questions.</p></div>}</section>}
         {view === "new" && <section className="new-analysis"><button className="back-link" onClick={() => setView("review")}><ArrowLeft size={15}/>Back to review</button><h1>Every expert has a way.</h1><p className="new-intro">Watch their work. Uncover the decisions.<br/>Check the reasoning against what you know.</p><form onSubmit={e => {e.preventDefault(); void analyze();}}><fieldset disabled={busy}><label className="field-label" htmlFor="task">What are we observing?</label><textarea id="task" required maxLength={8000} placeholder="Describe the task, equipment, situation, and intended outcome." value={task} onChange={e => setTask(e.target.value)}/><div className="upload-fields"><label className="upload-area"><Film size={25}/><strong>{taskVideo?.name || "Add a work video"}</strong><span>MP4 · up to 100 MB</span><input type="file" accept="video/mp4,.mp4" required onChange={e => setTaskVideo(e.target.files?.[0] || null)}/></label><label className="upload-area"><BookOpen size={25}/><strong>{references.length ? `${references.length} references selected` : "Add reference excerpts"}</strong><span>TXT or Markdown · optional</span><input type="file" accept=".txt,.md" multiple onChange={e => setReferences(Array.from(e.target.files || []))}/></label></div><label className="field-label" htmlFor="transcript">Narration transcript <span>Optional</span></label><input id="transcript" type="file" accept=".txt,.md" onChange={e => setTranscript(e.target.files?.[0] || null)}/><p className="form-note">Timestamped captions help distinguish visible actions from the speaker’s explanation. Use times relative to this clip and label automatic captions.</p><label className="field-label" htmlFor="scope">Reference applicability <span>Optional</span></label><input id="scope" className="text-input" maxLength={8000} placeholder="Document title, issuer, equipment model, and edition" value={scope} onChange={e => setScope(e.target.value)}/><p className="form-note">Video and references are sent to Meta when you start. Use material you have permission to share.</p>{!ready && <div className="api-notice"><CircleHelp size={18}/><p><strong>Meta API setup is needed</strong><br/>Add MODEL_API_KEY to web/.env.local and restart the app. You can open a saved review while API access is pending.</p></div>}<button className="button primary-button start-analysis" disabled={!ready || !taskVideo || !task.trim()}>{busy ? <><LoaderCircle className="spin" size={17}/>Analyzing with Muse Spark…</> : <>Start analysis<ArrowRight size={17}/></>}</button>{busy && <p className="form-note" role="status">Watching the video and reviewing evidence. This can take several minutes. Keep this page open.</p>}</fieldset></form></section>}
         <div hidden={view !== "decisions"}><DecisionTest workflow={data} ready={ready}/></div>
+        <div hidden={view !== "guide"}><TrainingStudio workflow={data} ready={ready} {...guideExamples}/></div>
       </main>
     </div>
   </div>;
