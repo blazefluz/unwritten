@@ -1,0 +1,30 @@
+{
+  "status": "candidate_only_not_model_evaluated",
+  "title": "testing USB charging cables",
+  "creator": "pileofstuff",
+  "url": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+  "license_verified_on_page": "Creative Commons Attribution license (reuse allowed)",
+  "selected_original_seconds": [325, 520],
+  "why_selected": [
+    "Several cable substitutions using one visible test setup",
+    "Meter readings and written cable labels can be checked against frames",
+    "The creator describes a short cable as disappointing rather than assuming short means good",
+    "The creator orders the tested cables from best to worst near the end"
+  ],
+  "pilot": [
+    "Verify cable identities, test boundaries and stable readings manually before model inference",
+    "Ask Meta to observe visible actions and numbers, separating narration from visible readings",
+    "Use an early subset to propose a relative-ranking principle",
+    "Withhold later spoken evaluations and the final ranking from rule inference and prediction",
+    "Predict a later cable comparison after its measurement is visible but before its spoken assessment",
+    "Score predicted pairwise preferences in code against the creator's recorded ordering"
+  ],
+  "limitations": [
+    "This is comparative testing and ranking, not demonstrated keep/repair/reject triage",
+    "The custom resistive load is not a constant-current load; do not claim identical current in all tests",
+    "Do not invent a pass/fail voltage threshold or claim USB compliance",
+    "Cable substitutions, probe handling and unstable readings need manual validation",
+    "A few comparisons from one creator are a pilot, not broad generalization evidence",
+    "The existing next-action evaluator does not yet implement pairwise ranking evaluation"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+  "source_creator": "pileofstuff",
+  "clip_original_start_seconds": 325,
+  "reference_type": "Creator's written voltage labels and left-to-right final ranking, transcribed by the coding assistant; not independently human-verified",
+  "reference_frame_clip_seconds": 170,
+  "training_ids": ["c1", "c2", "c3", "c4"],
+  "reference_order": ["c4", "c2", "c1", "c6", "c3", "c7", "c5"],
+  "cables": [
+    {"id":"c1", "label_magnitude_v":4.48,"measurement_window":[25,69]},
+    {"id":"c2", "label_magnitude_v":4.51,"measurement_window":[69,80]},
+    {"id":"c3", "label_magnitude_v":4.31,"measurement_window":[80,90]},
+    {"id":"c4", "label_magnitude_v":4.70,"measurement_window":[90,99]},
+    {"id":"c5", "label_magnitude_v":3.50,"measurement_window":[99,106]},
+    {"id":"c6", "label_magnitude_v":4.46,"measurement_window":[106,111]},
+    {"id":"c7", "label_magnitude_v":4.16,"measurement_window":[111,116]}
+  ],
+  "reading_tolerance_v":0.05,
+  "protocol": "Observe the first 127 seconds of the selected clip after removing audio. Final ranking begins later and is excluded. Infer a frozen comparator from the first four observed measurements and their relative preference labels. Score all 12 held-out-versus-training comparisons. The predictor receives no final ranking, later assessments, transcript, brands or reference voltages. Compare against an absolute-voltage baseline."
+}

@@ -5,7 +5,7 @@ import json
 import pytest
 
 from tests.test_engine import FakeClient
-from unwritten.workflow import analyze, check_reviews, load_references, render
+from unwritten.workflow import analyze, check_reviews, load_references, load_transcript, render
 
 
 OBS = {"kind": "workflow_observations", "source": "synthetic-task.mp4", "events": [{
@@ -156,3 +156,39 @@ def test_cli_preserves_existing_review_before_any_model_call(tmp_path, monkeypat
     with pytest.raises(SystemExit):
         cli.main()
     assert (tmp_path / "clip.workflow.json").read_text() == "previous review"
+
+
+def test_caption_context_is_preserved_and_separated_from_reference_evidence(tmp_path):
+    path = tmp_path / "automatic-captions.txt"
+    path.write_text("Automatic captions; unverified.\n[0:02] I am checking the oil.")
+    transcript = load_transcript(path)
+    obs = copy.deepcopy(OBS)
+    obs["events"][0]["speaker_explanation"] = "Speaker says they are checking the oil."
+    fake = FakeClient([obs, HYP])
+    cached = []
+    result = analyze(fake, task="Synthetic task", video="fake-file",
+                     transcript=transcript, on_observed=cached.append)
+    assert "I am checking the oil" in fake.prompts[0][1]
+    assert "not independent proof" in fake.prompts[0][1]
+    assert result["transcript"] == cached[0]["transcript"] == transcript
+    assert result["references"] == []
+    assert result["final"]["reviews"][0]["assessment"] == "inconclusive"
+    assert "Speaker says they are checking the oil" in render(result)
+    assert len(transcript["sha256"]) == 64
+
+
+def test_empty_or_nontext_transcript_is_rejected(tmp_path):
+    path = tmp_path / "captions.txt"
+    path.write_text("")
+    with pytest.raises(ValueError):
+        load_transcript(path)
+    path = tmp_path / "captions.json"
+    path.write_text("{}")
+    with pytest.raises(ValueError):
+        load_transcript(path)
+
+
+def test_insufficient_evidence_can_produce_no_principles():
+    result = analyze(FakeClient([{"hypotheses": []}]), task="Ambiguous movements",
+                     observation=OBS)
+    assert result["final"] == {"hypotheses": [], "reviews": []}

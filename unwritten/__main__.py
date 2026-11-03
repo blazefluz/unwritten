@@ -60,7 +60,7 @@ def _play(lab: dict, out: str, video: str | None) -> None:
 
 
 def _analyze(args) -> None:
-    from .workflow import analyze, load_references, render
+    from .workflow import analyze, load_references, load_transcript, render
 
     if bool(args.video) == bool(args.observations):
         raise ValueError("Supply either a video or --observations, not both.")
@@ -74,6 +74,7 @@ def _analyze(args) -> None:
     observation = json.loads(Path(args.observations).read_text()) if args.observations else None
     if observation is not None and observation.get("kind") != "workflow_observations":
         raise ValueError("--observations requires a saved workflow observation file.")
+    transcript = load_transcript(args.transcript) if args.transcript else (observation or {}).get("transcript")
     source = args.video or observation.get("source", args.observations)
     if args.out:
         stem = Path(args.out)
@@ -98,7 +99,8 @@ def _analyze(args) -> None:
         video = client.upload_video(args.video)
     result = analyze(client, task=args.task, source=source, video=video,
                      observation=observation, references=references, answers=answers,
-                     rounds=args.rounds, on_observed=save_observations)
+                     rounds=args.rounds, on_observed=save_observations,
+                     transcript=transcript)
     Path(f"{stem}.workflow.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     report_path = Path(f"{stem}.workflow.html")
@@ -140,9 +142,16 @@ def main() -> None:
     a.add_argument("--observations", help="reuse a saved .workflow.observations.json")
     a.add_argument("--reference", action="append", default=[], help="UTF-8 .txt/.md excerpt; repeatable")
     a.add_argument("--reference-scope", default="", help="reference equipment/model/version and applicability")
+    a.add_argument("--transcript", help="timestamped UTF-8 .txt/.md narration; relative to the clip")
     a.add_argument("--answers", help="JSON object mapping full question text to expert answers")
     a.add_argument("--rounds", type=int, default=2, help="review/revision rounds, 1–3")
     a.add_argument("--out", help="output path prefix")
+
+    d = sub.add_parser("test-decisions", help="test next actions against human-labelled workflow events")
+    d.add_argument("observations", help="saved workflow observations JSON")
+    d.add_argument("--labels", required=True, help="JSON mapping every event ID to a human action category")
+    d.add_argument("--train", type=float, default=0.6)
+    d.add_argument("--out", required=True, help="new evaluation JSON file")
 
     args = p.parse_args()
     if args.cmd == "observe":
@@ -162,6 +171,20 @@ def main() -> None:
     elif args.cmd == "analyze":
         try:
             _analyze(args)
+        except (ValueError, OSError) as exc:
+            p.error(str(exc))
+    elif args.cmd == "test-decisions":
+        from .decisions import evaluate
+        try:
+            output = Path(args.out)
+            if output.exists():
+                raise ValueError("Output already exists; choose a new --out path.")
+            observation = json.loads(Path(args.observations).read_text())
+            labels = json.loads(Path(args.labels).read_text())
+            result = evaluate(_client(), observation, labels, train_fraction=args.train)
+            with output.open("x", encoding="utf-8") as stream:
+                json.dump(result, stream, indent=2)
+            print(json.dumps(result["score"]))
         except (ValueError, OSError) as exc:
             p.error(str(exc))
 

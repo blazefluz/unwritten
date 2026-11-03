@@ -61,6 +61,13 @@ Neutral buttons use outlined white surfaces; hover shifts them to the canvas ton
 
 Motion is limited to brief background hover transitions and a loading spinner. Reduced-motion preferences disable animations, transitions and smooth scrolling. Empty video states use simple icons; imagery comes from supplied video.
 
+Decision test uses the same document surface, with collapsible event forms, local
+video playback and time-seek controls. Keep action labels separate from observed
+evidence. Show the training/test counts and request count before a paid test.
+Evaluation results pair the main score with the baseline, abstentions and every
+prediction. Draft source and synthetic warnings must remain visible. Local drafts
+and expert answers survive refreshes; export remains available as a backup.
+
 ## Do's and Don'ts
 
 - Do preserve synthetic labels and uncertainty beside their evidence.

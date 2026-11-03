@@ -25,13 +25,34 @@ export. Open an existing `.workflow.json` with **Open review**, or choose
 The initial example is explicitly synthetic, not a real analysis. Attaching a
 local video to an existing review only changes playback; attach its matching
 source to use the recorded timestamps. Imported reviews and draft expert answers
-live in the browser tab: export them before closing or refreshing it.
+are saved in this browser across refreshes. Export backups; browser storage can
+be cleared or run out of space. Videos must be reattached after refreshing.
+
+**Decision test** works offline for event correction and human action labels.
+Import saved observations, or add events manually while watching a local video.
+Save an annotation draft, export corrected observations and labels, then run a
+chronological test when Meta API access is ready. Its rules are learned from the
+training prefix and frozen; predictions are scored by code against human labels,
+including misses, abstentions and a majority-category baseline. Open an evaluation
+JSON to inspect every prediction. Imported reports have their score arithmetic
+checked, but their execution and labels are not independently verified.
+`examples/synthetic-decisions.annotations.json` is a scripted interface fixture,
+not real video observations. See [the evaluation guide](evaluation/decision-test.md).
+
+Expert questions now offer **Re-review with Meta**. Answers remain attributed
+testimony, and a new review retains all previous rounds. The original observations
+are reused; the video is not uploaded again.
 
 For new Meta analyses, install the Python dependencies into `.venv`, add
 `MODEL_API_KEY` to the gitignored `web/.env.local`, and restart Next.js. Keys stay
 on the server; never use a `NEXT_PUBLIC_` variable for credentials. The default
 Python executable is `.venv/bin/python`; override it with `UNWRITTEN_PYTHON` if
 needed. Wait for billing/API access and credits before starting a paid run.
+Optional timestamped `.txt`/`.md` transcripts can accompany a video. Times must
+be relative to the selected clip; exclude narration from outside it. Label automatic
+captions and keep speaker testimony separate from visible evidence. The CLI accepts
+`--transcript path/to/captions.txt`. Transcripts are not manufacturer references.
+
 The upload form accepts local MP4 videos up to 100 MB and UTF-8 `.txt`/`.md`
 references. Its same-origin route invokes `unwritten.web_bridge`; saved run inputs,
 observations, and results remain locally in the ignored `.unwritten-runs/` folder.
@@ -188,7 +209,8 @@ baseline, the lab notebook, the prediction player, and the Creative Commons clip
 The general task workflow, reference citation checker, revision notebook and
 expert-answer reanalysis were also built during the event. A clearly labelled
 offline sample is in `examples/synthetic-workflow.html`.
-The Next.js workspace and its local Python bridge are new work too.
+The Next.js workspace, offline annotation editor, chronological action evaluation,
+expert-answer review controls and local Python bridge are new work too.
 
 Third-party pieces we did not write:
 

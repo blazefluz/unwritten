@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "source": "SYNTHETIC offline annotation example \u2014 no source video",
+  "task": "SYNTHETIC category sequence for testing the annotation interface",
+  "observation": {
+    "events": [
+      {
+        "id": "synthetic-1",
+        "time_start": 0,
+        "time_end": 5,
+        "action": "SYNTHETIC example action: inspect.",
+        "visible_evidence": "Scripted fixture; no real video evidence.",
+        "observed_result": "Scripted example only.",
+        "uncertainties": [
+          "Not a real model observation."
+        ]
+      },
+      {
+        "id": "synthetic-2",
+        "time_start": 10,
+        "time_end": 15,
+        "action": "SYNTHETIC example action: adjust.",
+        "visible_evidence": "Scripted fixture; no real video evidence.",
+        "observed_result": "Scripted example only.",
+        "uncertainties": [
+          "Not a real model observation."
+        ]
+      },
+      {
+        "id": "synthetic-3",
+        "time_start": 20,
+        "time_end": 25,
+        "action": "SYNTHETIC example action: test.",
+        "visible_evidence": "Scripted fixture; no real video evidence.",
+        "observed_result": "Scripted example only.",
+        "uncertainties": [
+          "Not a real model observation."
+        ]
+      },
+      {
+        "id": "synthetic-4",
+        "time_start": 30,
+        "time_end": 35,
+        "action": "SYNTHETIC example action: inspect.",
+        "visible_evidence": "Scripted fixture; no real video evidence.",
+        "observed_result": "Scripted example only.",
+        "uncertainties": [
+          "Not a real model observation."
+        ]
+      },
+      {
+        "id": "synthetic-5",
+        "time_start": 40,
+        "time_end": 45,
+        "action": "SYNTHETIC example action: test.",
+        "visible_evidence": "Scripted fixture; no real video evidence.",
+        "observed_result": "Scripted example only.",
+        "uncertainties": [
+          "Not a real model observation."
+        ]
+      }
+    ]
+  },
+  "labels": {
+    "synthetic-1": "inspect",
+    "synthetic-2": "adjust",
+    "synthetic-3": "test",
+    "synthetic-4": "inspect",
+    "synthetic-5": "test"
+  }
+}

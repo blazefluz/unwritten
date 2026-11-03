@@ -27,6 +27,7 @@ S = {"type": "string"}
 EVENT_SCHEMA = obj({"events": array(obj({
     "id": S, "time_start": {"type": "number"}, "time_end": {"type": "number"},
     "action": S, "visible_evidence": S, "observed_result": S,
+    "speaker_explanation": S,
     "uncertainties": array(S),
 }))})
 HYPOTHESIS_SCHEMA = obj({"hypotheses": array(obj({
@@ -67,6 +68,15 @@ def load_references(paths, scope=""):
     return refs
 
 
+def load_transcript(path):
+    path = Path(path)
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() not in {".txt", ".md"} or not text.strip() or len(text) > 120_000:
+        raise ValueError("Transcript must be a nonempty UTF-8 .txt/.md file under 120,000 characters.")
+    return {"source": path.name, "text": text,
+            "sha256": hashlib.sha256(text.encode()).hexdigest()}
+
+
 def validate_events(observation):
     if not isinstance(observation, dict) or not isinstance(observation.get("events"), list):
         raise ValueError("Workflow observations must contain an events array.")
@@ -83,6 +93,8 @@ def validate_events(observation):
                 not isinstance(event["uncertainties"], list) or
                 not all(isinstance(v, str) for v in event["uncertainties"])):
             raise ValueError("Malformed workflow event; use saved workflow observations.")
+        if "speaker_explanation" in event and not isinstance(event["speaker_explanation"], str):
+            raise ValueError("Speaker explanations must be text attributed to narration.")
         start, end = event["time_start"], event["time_end"]
         if (not event["id"] or event["id"] in ids or
                 not all(isinstance(t, (int, float)) and not isinstance(t, bool)
@@ -150,7 +162,7 @@ def check_reviews(hypotheses, proposal, references):
 
 
 def analyze(client, *, task, source="", video=None, observation=None,
-            references=(), answers=None, rounds=2, on_observed=None):
+            references=(), answers=None, rounds=2, on_observed=None, transcript=None):
     if not task.strip() or not 1 <= rounds <= 3:
         raise ValueError("Supply a task and 1–3 review rounds.")
     if observation is None:
@@ -158,19 +170,30 @@ def analyze(client, *, task, source="", video=None, observation=None,
             raise ValueError("Supply a video or saved workflow observations.")
         observation = client.ask_json(
             BOUNDARY + "Watch this task and log actions chronologically. Only record "
-            "what is visible or audible, with seconds relative to the clip. Record "
+            "what is visible or audible, with seconds relative to the clip. In visible_evidence "
+            "describe only what is visible. Put narrated intent, reported symptoms and "
+            "spoken test results in speaker_explanation, explicitly attributed to the speaker. "
+            "Use an empty speaker_explanation when unavailable. Narration is testimony, "
+            "not independent proof. Supplied captions may contain transcription errors; "
+            "do not silently repair ambiguous words. Do not infer an inspection's purpose "
+            "from posture or contact alone. Prefer meaningful diagnostic actions over generic "
+            "body movements when narration establishes intent. Record "
             "unavailable results as unknown. Do not infer the worker's reasoning. "
-            "The task context is: " + json.dumps(task),
+            "The task context is: " + json.dumps({"task": task, "transcript": transcript}),
             EVENT_SCHEMA, "workflow_observations", video=video)
     events = validate_events(observation)
     if on_observed:
         on_observed({"kind": "workflow_observations", "source": source,
-                     "task": task, "events": events})
+                     "task": task, "events": events, "transcript": transcript})
     refs = list(references)
-    evidence = {"task": task, "events": events, "expert_answers": answers or {}}
+    evidence = {"task": task, "events": events, "expert_answers": answers or {},
+                "transcript": transcript}
     prompt = BOUNDARY + (
         "Infer a small set of decision principles from these observed actions. "
-        "Every claim is a hypothesis, not a fact. Link each to event IDs and "
+        "Every claim is a hypothesis, not a fact. Do not turn incidental filming, "
+        "repositioning, or action order alone into a decision principle. Distinguish "
+        "the speaker's stated reasoning from a rule inferred by you. It is valid to "
+        "return no hypotheses when the evidence cannot establish a decision. Link each to event IDs and "
         "provide alternative explanations and a targeted expert question. "
         "Expert answers are attributed testimony, not independently verified facts.\n"
     ) + json.dumps(evidence, ensure_ascii=False)
@@ -209,6 +232,7 @@ def analyze(client, *, task, source="", video=None, observation=None,
             "principles; retract or qualify unsupported interpretations.\n"
         ) + json.dumps({**evidence, "previous_attempt": history[-1]}, ensure_ascii=False)
     return {"kind": "workflow_analysis", "task": task, "source": source,
+            "transcript": transcript,
             "events": events, "references": refs, "expert_answers": answers or {},
             "attempts": history, "final": history[-1],
             "limitations": "Model interpretations require expert review. Code checks citation "
@@ -221,7 +245,7 @@ def render(result, video_src=None):
         f'<tr><td>{e(v["id"])}<br><button type="button" data-time="{e(v["time_start"])}">'
         f'{e(v["time_start"])}–{e(v["time_end"])}s</button></td>'
         f'<td>{e(v["action"])}</td><td>{e(v["visible_evidence"])}</td>'
-        f'<td>{e(v["observed_result"])}<br>{e("; ".join(v["uncertainties"]))}</td></tr>'
+        f'<td>{e(v["observed_result"])}<br>Speaker testimony: {e(v.get("speaker_explanation", "Not supplied"))}<br>{e("; ".join(v["uncertainties"]))}</td></tr>'
         for v in result["events"])
     attempts = []
     for i, attempt in enumerate(result["attempts"], 1):

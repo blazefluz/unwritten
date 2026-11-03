@@ -18,6 +18,9 @@ export async function POST(request: Request) {
     const task = String(form.get("task") || "").trim();
     const scope = String(form.get("scope") || "").trim();
     const refs = form.getAll("references");
+    const transcript = form.get("transcript");
+    if (transcript && (!(transcript instanceof File) || !/\.(txt|md)$/i.test(transcript.name) || transcript.size > 480000))
+      return Response.json({error: "Use a text or Markdown transcript under 480 KB."}, {status: 400});
     if (!(video instanceof File) || !video.name.toLowerCase().endsWith(".mp4") ||
         video.size < 1 || video.size > 100 * 1024 * 1024 || !task || task.length > 8000 || scope.length > 8000)
       return Response.json({error: "Add a task description and an MP4 video under 100 MB."}, {status: 400});
@@ -35,7 +38,12 @@ export async function POST(request: Request) {
       await writeFile(refPath, Buffer.from(await file.arrayBuffer()));
       references.push(refPath);
     }
-    const input = {video: videoPath, source: video.name, task, scope, references,
+    let transcriptPath: string | undefined;
+    if (transcript instanceof File) {
+      transcriptPath = path.join(runDir, "transcript.txt");
+      await writeFile(transcriptPath, Buffer.from(await transcript.arrayBuffer()));
+    }
+    const input = {transcript: transcriptPath, video: videoPath, source: video.name, task, scope, references,
       observations: path.join(runDir, "observations.json"), output: path.join(runDir, "workflow.json")};
     const result = await new Promise<string>((resolve, reject) => {
       const child = spawn(process.env.UNWRITTEN_PYTHON || path.join(root, ".venv/bin/python"),

@@ -3,7 +3,7 @@ import { z } from "zod";
 const text = z.string().max(180000);
 const event = z.object({ id: text, time_start: z.number().finite().nonnegative(),
   time_end: z.number().finite().nonnegative(), action: text, visible_evidence: text,
-  observed_result: text, uncertainties: z.array(text) });
+  observed_result: text, speaker_explanation: text.optional(), uncertainties: z.array(text) });
 const hypothesis = z.object({ id: text, event_ids: z.array(text), claim: text,
   reasoning: text, alternatives: z.array(text), expert_question: text });
 const citation = z.object({ reference_id: text, line_start: z.number().int(),
@@ -14,6 +14,7 @@ const review = z.object({ hypothesis_id: text, proposed_assessment: text,
   human_review_required: z.boolean() });
 const attempt = z.object({ hypotheses: z.array(hypothesis), reviews: z.array(review) });
 export const workflowSchema = z.object({ kind: z.literal("workflow_analysis"), task: text,
+  transcript: z.object({source: text, text, sha256: text}).nullable().optional(),
   source: text, events: z.array(event).min(1).max(10000),
   references: z.array(z.object({id: text, title: text, declared_scope: text,
     sha256: text, lines: z.array(text)})), expert_answers: z.record(z.string(), text),
