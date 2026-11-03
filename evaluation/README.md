@@ -1,11 +1,14 @@
 # Real-video evaluation
 
-No real-model accuracy has been measured yet. `annotations.csv` is an empty
-annotation template, not ground truth and not model output.
+Real Meta development runs have now been completed. See the
+[training-guide pilot audit](training-guide-pilot.md) for the measured cable
+results and their limitations. Independent business validation is still pending.
+Use the [partner collection pack](partner-pilot/README.md) for the next stage.
+`annotations.csv` remains an empty annotation template, not ground truth or model output.
 
 ## Select footage
 
-The primary candidate is now actual warehouse footage: **Warehouse Entry Bag
+An earlier warehouse candidate was: **Warehouse Entry Bag
 Check weighing and Manual Sorting system**, by **Dhanvanthri Engineers**:
 <https://www.youtube.com/watch?v=ioqxuv8ItgA>. Downloaded with the license-checking
 helper to `clips/warehouse-bags/ioqxuv8ItgA.mp4`; its `.attribution.json` records
@@ -16,8 +19,9 @@ and a later view of the weighing dashboard. Do not assume the policy from sack
 appearance: weights or software instructions may drive routing. Review continuous
 segments before annotating and mark unavailable decision inputs as unknown.
 
-The user selected actual warehouse footage as the target. Tabletop, craft and
-animated clips are not substitutes for that demo.
+The product now supports any observed task. Warehouse handling, repair and cable
+comparison are development examples; none substitutes for independent operator
+validation of the training-guide proposition.
 
 Use a continuous shot of a person sorting items. Both the item before pickup and
 its destination must be visible. Aim for at least 20 decisions, three destinations,

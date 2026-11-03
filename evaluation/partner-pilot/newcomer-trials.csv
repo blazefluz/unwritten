@@ -1,0 +1,1 @@
+participant_id,session_id,case_id,condition_existing_or_guide,order,decision,reference_outcome,correct,serious_error,abstained,elapsed_seconds,supervisor_interruptions,notes
