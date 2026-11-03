@@ -9,8 +9,11 @@ process.env.JUDGE_LIVE_ENABLED='true';process.env.MODEL_API_KEY='offline-test-on
 process.env.JUDGE_ACCESS_CODE='offline-test-code-at-least-24-characters';
 process.env.RENDER_EXTERNAL_URL='https://example.test';
 const access=await import('../web/lib/judge-access.ts');
+const {boundedBytes}=await import('../web/lib/bounded-form.ts');
 const request=(cookie='',origin='https://example.test')=>new Request('https://example.test/api/analyze',{headers:{origin,cookie,'x-forwarded-for':'127.0.0.1'}});
 try {
+  await assert.rejects(boundedBytes(new Request('http://localhost',{method:'POST',body:'x'.repeat(2001)}),2000),RangeError);
+  assert.equal((await boundedBytes(new Request('http://localhost',{method:'POST',body:'valid'}),2000)).length,5);
   assert.equal(await access.remainingRuns(),6);
   await assert.rejects(access.verifyCode(request(),'wrong'),e=>e.status===401);
   assert.equal(await access.remainingRuns(),6,'wrong codes cannot spend the run allowance');

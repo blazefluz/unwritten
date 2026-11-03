@@ -75,6 +75,7 @@ export async function POST(request: Request) {
     });
     return Response.json(workflowSchema.parse(JSON.parse(result)));
   } catch (error) {
+    if(error instanceof RangeError)return Response.json({error:"The upload exceeds this deployment’s size limit. No reviewer run was used."},{status:413});
     if(error instanceof AccessError)return Response.json({error:error.message},{status:error.status});
     return Response.json({error: local?"Analysis could not finish. Check Meta access and the Python environment. Local run files are retained in .unwritten-runs.":accepted?"The accepted analysis could not finish; one reviewer run was used. Earlier results remain in your browser.":"The upload could not be accepted. No reviewer run was used. Check the MP4 and size limit."}, {status: 500});
   } finally {if(temporaryRun)await rm(temporaryRun,{recursive:true,force:true}).catch(()=>{});}
