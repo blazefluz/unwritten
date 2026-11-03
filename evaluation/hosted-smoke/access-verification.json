@@ -1,0 +1,11 @@
+{
+  "final_submission_code_verified": true,
+  "remaining_runs_after_redeploy": 6,
+  "shared_limit": 6,
+  "anonymous_analysis_status": 403,
+  "other_paid_tools_status": 403,
+  "oversized_code_request_status": 413,
+  "final_code_used_for_analysis": false,
+  "database_external_access": "blocked",
+  "deployed_commit": "b25bfcc"
+}

@@ -18,7 +18,8 @@ Keep demo mode enabled on an internet-facing service: the other API guard is
 intended for loopback development, not public authentication. The reviewer mode adds separate authentication, upload limits and durable usage
 accounting for video analysis only. Other server tools remain local-only.
 Keep MODEL_API_KEY server-side and out of the Docker build context, Git and client
-bundles. No Meta credential has been sent to Render for this deployment.
+bundles. The initial read-only deployment used no credential. After explicit user approval,
+Meta access and reviewer credentials were configured privately for the six-run gate.
 
 Free Render instances sleep after idle periods and have ephemeral filesystems.
 Export drafts/results; browser drafts are per device. This deployment does not
@@ -39,3 +40,8 @@ MP4 returned HTTP 200 and played in the browser; selecting e4 sought to 9.5s.
 No credentials were supplied to Render and the selected instance is Free ($0).
 Public-repository deployments are manual; after pushing changes, use Manual
 Deploy → Deploy latest commit in the Render dashboard.
+
+The hosted Meta smoke test and final six-use verification are recorded in
+[evaluation/hosted-smoke](../evaluation/hosted-smoke/README.md). The final deployed
+application commit is `b25bfcc`; the code remains private and all six uses remained
+after redeployment.

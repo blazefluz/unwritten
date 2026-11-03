@@ -1,0 +1,8 @@
+{
+  "provider": "Meta Muse Spark",
+  "duration_seconds": 24,
+  "events": 6,
+  "hypotheses": 0,
+  "setup_allowance_after": 5,
+  "purpose": "Hosted integration test only; final reviewer code is a separate new grant."
+}

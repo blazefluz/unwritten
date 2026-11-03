@@ -1,0 +1,96 @@
+{
+  "kind": "workflow_analysis",
+  "task": "Observe the demonstrated bag zipper pull replacement. Separate visible evidence from tentative intent. This is a hosted connectivity smoke test, not expert validation.",
+  "transcript": null,
+  "source": "setup-smoke.mp4",
+  "events": [
+    {
+      "id": "1",
+      "time_start": 0,
+      "time_end": 4.9,
+      "action": "Manipulate front pocket zipper components",
+      "visible_evidence": "Two hands in contact with black backpack on wooden table; fingers grasping and moving small metal zipper parts and cord pulls on two front zippered pockets",
+      "observed_result": "Small silver metal piece held separately between fingers away from slider; both front pockets remain attached to bag",
+      "speaker_explanation": "",
+      "uncertainties": [
+        "Condition of original pull before handling is not visible",
+        "Reason for handling is not audible"
+      ]
+    },
+    {
+      "id": "2",
+      "time_start": 5,
+      "time_end": 9.2,
+      "action": "Cut sheet material with scissors",
+      "visible_evidence": "Left hand holding edge of gray-blue flexible sheet; right hand holding scissors with light blades and blue handles opening and closing through the sheet edge",
+      "observed_result": "Thin strip separated from larger sheet",
+      "speaker_explanation": "",
+      "uncertainties": [
+        "Material composition unknown",
+        "Dimensions unknown"
+      ]
+    },
+    {
+      "id": "3",
+      "time_start": 9.3,
+      "time_end": 12.4,
+      "action": "Thread cord through zipper slider",
+      "visible_evidence": "Hands holding thin light-colored cord vertically in front of right pocket pocket; feeding one end through hole in silver zipper slider",
+      "observed_result": "Thin cord passes through hole in silver slider on right front pocket with ends hanging",
+      "speaker_explanation": "",
+      "uncertainties": [
+        "Cord material and origin relative to cut strip is unclear"
+      ]
+    },
+    {
+      "id": "4",
+      "time_start": 12.5,
+      "time_end": 17.8,
+      "action": "Secure cord to slider by hand",
+      "visible_evidence": "Fingers looping, twisting and pulling thin dark cord at slider area and tightening with both hands",
+      "observed_result": "Cord loop attached to slider with ends hanging downward",
+      "speaker_explanation": "",
+      "uncertainties": [
+        "Knot or fastening type not clearly visible",
+        "Intent of manipulation is not audible"
+      ]
+    },
+    {
+      "id": "5",
+      "time_start": 17.9,
+      "time_end": 19.8,
+      "action": "Trim cord ends with scissors",
+      "visible_evidence": "Left hand holding hanging cord ends below slider; right hand bringing scissors to cords and closing blades",
+      "observed_result": "Short trimmed ends; remaining pull stays attached to slider",
+      "speaker_explanation": "",
+      "uncertainties": [
+        "Length removed unknown"
+      ]
+    },
+    {
+      "id": "6",
+      "time_start": 20,
+      "time_end": 23.9,
+      "action": "Operate zipper using attached pull",
+      "visible_evidence": "Hand grasping new cord pull and sliding zipper slider back and forth on right front pocket",
+      "observed_result": "Slider moves along horizontal track to open and then close; pull remains attached",
+      "speaker_explanation": "",
+      "uncertainties": [
+        "Functional condition of zipper beyond this movement unknown"
+      ]
+    }
+  ],
+  "references": [],
+  "expert_answers": {},
+  "attempts": [
+    {
+      "hypotheses": [],
+      "reviews": []
+    }
+  ],
+  "final": {
+    "hypotheses": [],
+    "reviews": []
+  },
+  "limitations": "Model interpretations require expert review. Code checks citation provenance and event structure, not factual or diagnostic accuracy."
+}
