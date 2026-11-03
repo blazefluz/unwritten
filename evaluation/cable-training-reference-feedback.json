@@ -1,0 +1,14 @@
+{
+  "source": "Creator's published ordering, transcribed by coding assistant; not an expert interview",
+  "question_answers": {
+    "question-1": {
+      "outcome": "left",
+      "reason": "The published order places c2 ahead of c1. Their written labels use voltage magnitudes, not meter polarity."
+    }
+  },
+  "validation_outcomes": {
+    "validation-1": "right",
+    "validation-2": "left",
+    "validation-3": "right"
+  }
+}

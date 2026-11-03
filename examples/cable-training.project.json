@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "title": "USB cable comparison \u00b7 published-video pilot",
+  "task": "Capture a reviewable guide to predicting which of two tested cables the creator ranks higher.",
+  "scope": "One published video by pileofstuff (CC BY), one resistive test setup. Values are prior Meta observations; preference labels are assistant transcriptions of published ordering, not independently expert-verified. Not electrical compliance or real business validation.",
+  "outcomes": [
+    "left",
+    "right"
+  ],
+  "features": [
+    {
+      "key": "left_voltage",
+      "label": "Left cable voltage (V)",
+      "type": "number"
+    },
+    {
+      "key": "right_voltage",
+      "label": "Right cable voltage (V)",
+      "type": "number"
+    }
+  ],
+  "cases": [
+    {
+      "id": "train-1",
+      "summary": "Compare c4 with c1",
+      "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+      "time_start": null,
+      "features": {
+        "left_voltage": 4.7139,
+        "right_voltage": 4.492
+      },
+      "split": "train",
+      "outcome": "left",
+      "label_source": "Creator's published ordering, transcribed by coding assistant",
+      "expert_reason": ""
+    },
+    {
+      "id": "train-2",
+      "summary": "Compare c3 with c1",
+      "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+      "time_start": null,
+      "features": {
+        "left_voltage": 4.3069,
+        "right_voltage": 4.492
+      },
+      "split": "train",
+      "outcome": "right",
+      "label_source": "Creator's published ordering, transcribed by coding assistant",
+      "expert_reason": ""
+    },
+    {
+      "id": "train-3",
+      "summary": "Compare c1 with c3",
+      "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+      "time_start": null,
+      "features": {
+        "left_voltage": 4.492,
+        "right_voltage": 4.3069
+      },
+      "split": "train",
+      "outcome": "left",
+      "label_source": "Creator's published ordering, transcribed by coding assistant",
+      "expert_reason": ""
+    },
+    {
+      "id": "question-1",
+      "summary": "Compare c2 with c1",
+      "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+      "time_start": null,
+      "features": {
+        "left_voltage": -4.5143,
+        "right_voltage": 4.492
+      },
+      "split": "question",
+      "outcome": null,
+      "label_source": "",
+      "expert_reason": ""
+    },
+    {
+      "id": "validation-1",
+      "summary": "Compare c5 with c1",
+      "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+      "time_start": null,
+      "features": {
+        "left_voltage": -3.5029,
+        "right_voltage": 4.492
+      },
+      "split": "test",
+      "outcome": null,
+      "label_source": "",
+      "expert_reason": ""
+    },
+    {
+      "id": "validation-2",
+      "summary": "Compare c6 with c3",
+      "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+      "time_start": null,
+      "features": {
+        "left_voltage": -4.4689,
+        "right_voltage": 4.3069
+      },
+      "split": "test",
+      "outcome": null,
+      "label_source": "",
+      "expert_reason": ""
+    },
+    {
+      "id": "validation-3",
+      "summary": "Compare c7 with c3",
+      "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+      "time_start": null,
+      "features": {
+        "left_voltage": -4.1647,
+        "right_voltage": 4.3069
+      },
+      "split": "test",
+      "outcome": null,
+      "label_source": "",
+      "expert_reason": ""
+    }
+  ],
+  "baseline_rule": {
+    "id": "known-magnitude-baseline",
+    "title": "Predeclared magnitude baseline",
+    "reason": "Simple mathematical baseline, not inferred or expert-approved.",
+    "evidence_case_ids": [],
+    "steps": [
+      {
+        "if_all": [
+          {
+            "feature": "left_voltage",
+            "op": "gt",
+            "value": null,
+            "other_feature": "right_voltage",
+            "absolute": true
+          }
+        ],
+        "then": "left"
+      },
+      {
+        "if_all": [
+          {
+            "feature": "left_voltage",
+            "op": "lt",
+            "value": null,
+            "other_feature": "right_voltage",
+            "absolute": true
+          }
+        ],
+        "then": "right"
+      }
+    ],
+    "otherwise": null
+  }
+}

@@ -10,6 +10,25 @@ from .workflow import analyze, load_references, load_transcript
 
 
 def run(request):
+    if request.get("operation") == "training":
+        from . import training
+        store = Path(__file__).resolve().parents[1] / ".unwritten-runs" / "training"
+        action = request["action"]
+        try:
+            if action == "propose":
+                return training.propose(MetaClient(), request["project"])
+            if action == "inspect":
+                return training.inspect(request["project"], request["study"])
+            if action == "freeze":
+                frozen = training.freeze(request["project"], request["study"],
+                    request["rule_id"], request["reviewer"], request["review_note"],
+                    request.get("approval_type", "demo"), store=store)
+                return {"frozen": frozen, "markdown": training.guide_markdown(frozen)}
+            if action == "validate":
+                return training.validate_frozen(request["freeze_id"], request["project"], store=store)
+            raise ValueError("Unknown guide operation.")
+        except ValueError as exc:
+            return {"error": str(exc)}
     client = MetaClient()
     if request.get("operation") == "decisions":
         from .decisions import evaluate

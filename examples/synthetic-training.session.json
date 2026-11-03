@@ -1,0 +1,184 @@
+{
+  "project": {
+    "version": 1,
+    "title": "SYNTHETIC returns-training exercise",
+    "task": "Illustrate the review workflow using scripted decisions, not real returns data.",
+    "scope": "Synthetic demonstration only; do not use as an operating procedure.",
+    "outcomes": [
+      "accept",
+      "reject"
+    ],
+    "features": [
+      {
+        "key": "voltage",
+        "label": "Voltage",
+        "type": "number"
+      },
+      {
+        "key": "scratch",
+        "label": "Scratch visible",
+        "type": "boolean"
+      }
+    ],
+    "cases": [
+      {
+        "id": "t1",
+        "summary": "SYNTHETIC t1",
+        "source": "Synthetic fixture",
+        "time_start": null,
+        "features": {
+          "voltage": 5,
+          "scratch": false
+        },
+        "split": "train",
+        "outcome": "accept",
+        "label_source": "Scripted fixture",
+        "expert_reason": ""
+      },
+      {
+        "id": "t2",
+        "summary": "SYNTHETIC t2",
+        "source": "Synthetic fixture",
+        "time_start": null,
+        "features": {
+          "voltage": 3,
+          "scratch": true
+        },
+        "split": "train",
+        "outcome": "reject",
+        "label_source": "Scripted fixture",
+        "expert_reason": ""
+      },
+      {
+        "id": "q1",
+        "summary": "SYNTHETIC q1",
+        "source": "Synthetic fixture",
+        "time_start": null,
+        "features": {
+          "voltage": 5,
+          "scratch": true
+        },
+        "split": "question",
+        "outcome": null,
+        "label_source": "",
+        "expert_reason": ""
+      },
+      {
+        "id": "x1",
+        "summary": "SYNTHETIC x1",
+        "source": "Synthetic fixture",
+        "time_start": null,
+        "features": {
+          "voltage": 5,
+          "scratch": true
+        },
+        "split": "test",
+        "outcome": null,
+        "label_source": "",
+        "expert_reason": ""
+      },
+      {
+        "id": "x2",
+        "summary": "SYNTHETIC x2",
+        "source": "Synthetic fixture",
+        "time_start": null,
+        "features": {
+          "voltage": 3,
+          "scratch": false
+        },
+        "split": "test",
+        "outcome": null,
+        "label_source": "",
+        "expert_reason": ""
+      },
+      {
+        "id": "x3",
+        "summary": "SYNTHETIC x3",
+        "source": "Synthetic fixture",
+        "time_start": null,
+        "features": {
+          "voltage": 5,
+          "scratch": false
+        },
+        "split": "test",
+        "outcome": null,
+        "label_source": "",
+        "expert_reason": ""
+      }
+    ],
+    "baseline_rule": null
+  },
+  "study": {
+    "kind": "training_study",
+    "dataset_fingerprint": "2142f6d016c47545de6b60444a93806b18741dbbe38456606691c4fe52657278",
+    "created_at": "synthetic",
+    "provenance": "Synthetic fake client",
+    "candidates": [
+      {
+        "id": "voltage",
+        "title": "Synthetic voltage",
+        "reason": "Scripted test rule",
+        "evidence_case_ids": [
+          "t1",
+          "t2"
+        ],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "voltage",
+                "op": "eq",
+                "value": 5,
+                "other_feature": null,
+                "absolute": false
+              }
+            ],
+            "then": "accept"
+          }
+        ],
+        "otherwise": "reject"
+      },
+      {
+        "id": "scratch",
+        "title": "Synthetic scratch",
+        "reason": "Scripted test rule",
+        "evidence_case_ids": [
+          "t1",
+          "t2"
+        ],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "scratch",
+                "op": "eq",
+                "value": false,
+                "other_feature": null,
+                "absolute": false
+              }
+            ],
+            "then": "accept"
+          }
+        ],
+        "otherwise": "reject"
+      }
+    ],
+    "direct_predictions": [
+      {
+        "case_id": "x1",
+        "outcome": "accept",
+        "reason": "Synthetic"
+      },
+      {
+        "case_id": "x2",
+        "outcome": "accept",
+        "reason": "Synthetic"
+      },
+      {
+        "case_id": "x3",
+        "outcome": "accept",
+        "reason": "Synthetic"
+      }
+    ]
+  }
+}
