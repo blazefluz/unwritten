@@ -16,10 +16,11 @@ export const projectSchema=z.object({version:z.literal(1),title:text,task:text,s
 export type TrainingProject=z.infer<typeof projectSchema>;
 export const studySchema=z.object({kind:z.literal("training_study"),dataset_fingerprint:z.string().regex(/^[a-f0-9]{64}$/),
   created_at:text,candidates:z.array(ruleSchema).max(6),provenance:text,
+  initial_candidates:z.array(ruleSchema).optional(), revision_history:z.array(z.object({revised_at:text,candidates:z.array(ruleSchema),inspection:z.unknown()})).optional(),
   direct_predictions:z.array(z.object({case_id:text,outcome:text.nullable(),reason:text}))});
 export type TrainingStudy=z.infer<typeof studySchema>;
 export type Inspection={active_rule_ids:string[];statuses:{id:string;consistent:boolean;counterexample_ids:string[]}[];
-  questions:{case_id:string;score:number;predictions:{rule_id:string;outcome:string|null}[];question:string}[];answered_questions:number};
+  questions:{case_id:string;score:number;selection_reason?:"disagreement"|"coverage_probe";predictions:{rule_id:string;outcome:string|null}[];question:string}[];answered_questions:number};
 export type FrozenGuide={kind:"frozen_training_guide";id:string;frozen_at:string;fingerprint:string;
   project:TrainingProject;study:TrainingStudy;analysis:Inspection;selected_rule:GuideRule;
   reviewer:string;review_note:string;approval_type:"demo"|"expert_attestation";approval_notice:string;
@@ -42,7 +43,7 @@ export function ruleText(rule:GuideRule,project:TrainingProject) {
 export function emptyProject():TrainingProject {return {version:1,title:"",task:"",scope:"",outcomes:["accept","repair","reject"],
   features:[],cases:[],baseline_rule:null};}
 export const inspectionSchema=z.object({active_rule_ids:z.array(text),statuses:z.array(z.object({id:text,consistent:z.boolean(),counterexample_ids:z.array(text)})),
-  questions:z.array(z.object({case_id:text,score:z.number().finite(),predictions:z.array(z.object({rule_id:text,outcome:text.nullable()})),question:text})),answered_questions:z.number().int().nonnegative()});
+  questions:z.array(z.object({case_id:text,score:z.number().finite(),selection_reason:z.enum(["disagreement","coverage_probe"]).optional(),predictions:z.array(z.object({rule_id:text,outcome:text.nullable()})),question:text})),answered_questions:z.number().int().nonnegative()});
 const predictionRow=z.object({case_id:text,prediction:text.nullable(),consensus_before:text.nullable(),consensus_after:text.nullable(),direct_meta:text.nullable(),majority:text,declared_baseline:text.nullable()});
 export const frozenSchema=z.object({kind:z.literal("frozen_training_guide"),id:z.string().uuid(),frozen_at:text,fingerprint:text,
   project:projectSchema,study:studySchema,analysis:inspectionSchema,selected_rule:ruleSchema,

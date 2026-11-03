@@ -17,6 +17,8 @@ def run(request):
         try:
             if action == "propose":
                 return training.propose(MetaClient(), request["project"])
+            if action == "revise":
+                return training.propose(MetaClient(), request["project"], previous=request["study"])
             if action == "inspect":
                 return training.inspect(request["project"], request["study"])
             if action == "freeze":

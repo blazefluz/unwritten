@@ -101,3 +101,31 @@ def test_training_or_scope_changes_invalidate_the_study():
     with pytest.raises(ValueError):inspect(p,s)
     p=project();p['cases'][0]['features']['voltage']=float('nan')
     with pytest.raises(ValueError):validate_project(p)
+
+
+def test_consensus_is_not_proof_and_reserved_spot_check_can_reject_every_rule():
+    p=project();s=study(p)
+    s['candidates']=[rule('v1','voltage',5),rule('v2','voltage',5)]
+    checked=inspect(p,s)
+    assert checked['questions'][0]['selection_reason']=='coverage_probe'
+    assert {x['outcome'] for x in checked['questions'][0]['predictions']}=={'accept'}
+    p['cases'][2].update(outcome='reject',label_source='Synthetic reference',expert_reason='Scratch matters')
+    assert inspect(p,s)['active_rule_ids']==[]
+
+
+def test_revision_uses_question_answer_but_keeps_direct_baseline_and_original_rules(tmp_path):
+    p=project();s=study(p);s['candidates']=[rule('v1','voltage',5),rule('v2','voltage',5)]
+    p['cases'][2].update(outcome='reject',label_source='Synthetic reference',expert_reason='Scratch matters')
+    corrected=rule('revised-scratch','scratch',False);corrected['evidence_case_ids'].append('q1')
+    fake=FakeClient([{'candidates':[corrected]}])
+    revised=propose(fake,p,previous=s)
+    assert len(fake.prompts)==1 and 'Scratch matters' in fake.prompts[0][1]
+    assert '"x1"' not in fake.prompts[0][1]
+    assert revised['direct_predictions']==s['direct_predictions']
+    assert revised['initial_candidates']==s['candidates']
+    assert len(revised['revision_history'])==1
+    assert inspect(p,revised)['active_rule_ids']==['revised-scratch']
+    frozen=freeze(p,revised,'revised-scratch','Synthetic reviewer','Synthetic only',store=tmp_path)
+    assert frozen['consistent_before']==2 and frozen['consistent_after']==1
+    p['cases'][3].update(outcome='reject',label_source='Held-out reference')
+    with pytest.raises(ValueError):propose(FakeClient([]),p,previous=revised)

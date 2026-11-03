@@ -76,11 +76,12 @@ def dataset_fingerprint(project):
 
 def validate_rule(rule,project,*,baseline=False):
     keys={f['key'] for f in project['features']};outcomes=set(project['outcomes'])
-    training={c['id'] for c in project['cases'] if c['split']=='train'}
+    training={c['id'] for c in project['cases'] if c['split']=='train' or
+              (c['split']=='question' and c['outcome'] is not None)}
     if not rule.get('id') or not rule.get('title') or not rule.get('steps') or len(rule['steps'])>12:
         raise ValueError('Rules need an ID, title and 1–12 decision steps.')
     if not baseline and (not rule.get('evidence_case_ids') or not set(rule['evidence_case_ids'])<=training):
-        raise ValueError('Rule evidence may link only to labelled training cases.')
+        raise ValueError('Rule evidence may link only to labelled training or answered question cases.')
     if rule.get('otherwise') not in [None,*outcomes]:raise ValueError('Unknown fallback outcome.')
     for step in rule['steps']:
         if step['then'] not in outcomes or not 1<=len(step['if_all'])<=8:raise ValueError('Invalid rule step.')
@@ -123,13 +124,24 @@ def consensus(rules,features):
     return outputs[0] if outputs and outputs[0] is not None and len(set(outputs))==1 else None
 
 
-def propose(client,project):
+def propose(client,project,*,previous=None):
     validate_project(project)
-    if any(c['outcome'] is not None for c in project['cases'] if c['split']!='train'):
+    if any(c['outcome'] is not None for c in project['cases'] if c['split']=='test'):
+        raise ValueError('Validation outcomes must remain unknown during proposal or revision.')
+    if previous is None and any(c['outcome'] is not None for c in project['cases'] if c['split']=='question'):
         raise ValueError('Start a study before labelling question or validation cases. Preserve previous studies as exports.')
-    train=[{'id':c['id'],'features':c['features'],'outcome':c['outcome']} for c in project['cases'] if c['split']=='train']
+    prior_analysis=inspect(project,previous) if previous else None
+    if previous and (not prior_analysis['answered_questions'] or len(previous.get('revision_history',[]))>=3):
+        raise ValueError('Revision needs an attributed question answer and is limited to three rounds.')
+    train=[{'id':c['id'],'features':c['features'],'outcome':c['outcome'],
+            'label_source':c['label_source'],'expert_reason':c.get('expert_reason','')}
+           for c in project['cases'] if c['split']=='train' or
+           (previous is not None and c['split']=='question' and c['outcome'] is not None)]
     context={k:project.get(k,'') for k in ['title','task','scope']}
     context.update({'features':project['features'],'outcomes':project['outcomes'],'training_cases':train})
+    if previous:
+        context['previous_candidates']=previous['candidates']
+        context['counterexamples']=prior_analysis['statuses']
     candidates=client.ask_json(BOUNDARY+
         'Propose 2–6 competing plausible decision lists consistent with ALL training cases. '
         'Prefer simple explanations and expose underdetermination. These are alternatives, '
@@ -139,11 +151,19 @@ def propose(client,project):
         'abstains. other_feature selects a right-hand feature instead of literal value. '
         'absolute applies to BOTH numeric sides. Link evidence only to training IDs. '
         'Do not invent observations, thresholds represented as official guidance, approvals '
-        'or held-out outcomes. Only use declared features and outcomes.\n'+json.dumps(context),
+        'or held-out outcomes. Only use declared features and outcomes. During revision, '
+        'use the attributed question answers and counterexamples to replace explanations '
+        'that no longer fit. Answers are testimony, not independently verified truth.\n'+json.dumps(context),
         obj({'candidates':array(RULE)}),'training_candidates')['candidates']
     if not 1<=len(candidates)<=6 or len({r['id'] for r in candidates})!=len(candidates):
         raise ValueError('Expected up to six unique candidate rules.')
     for r in candidates:validate_rule(r,project)
+    if previous:
+        return {**copy.deepcopy(previous),'candidates':candidates,
+                'initial_candidates':copy.deepcopy(previous.get('initial_candidates',previous['candidates'])),
+                'revision_history':[*previous.get('revision_history',[]),
+                    {'revised_at':datetime.now(timezone.utc).isoformat(),
+                     'candidates':copy.deepcopy(previous['candidates']),'inspection':prior_analysis}]}
     tests=[{'id':c['id'],'features':c['features']} for c in project['cases'] if c['split']=='test']
     direct=client.ask_json(BOUNDARY+
         'Independently predict the outcome for each validation case from the training '
@@ -156,6 +176,7 @@ def propose(client,project):
         raise ValueError('Incomplete direct baseline.')
     return {'kind':'training_study','dataset_fingerprint':dataset_fingerprint(project),
             'created_at':datetime.now(timezone.utc).isoformat(),'candidates':candidates,
+            'initial_candidates':copy.deepcopy(candidates),'revision_history':[],
             'direct_predictions':direct,'provenance':'MetaClient.ask_json; Muse Spark; no question or validation labels sent to the model'}
 
 
@@ -180,7 +201,25 @@ def inspect(project,study):
         if len(counts)<2:continue
         score=1-sum((n/len(predictions))**2 for n in counts.values())
         questions.append({'case_id':c['id'],'score':score,'predictions':predictions,
+            'selection_reason':'disagreement',
             'question':f"For {c['summary'] or c['id']}, which outcome is correct, and which observable detail makes it correct? The remaining rules disagree."})
+    if not questions and active:
+        # A finite candidate set can agree and still be wrong. Reserve a clearly
+        # labelled spot-check; never call consensus proof of the correct policy.
+        known_features=[c['features'] for c in known]
+        for c in project['cases']:
+            if c['split']!='question' or c['outcome'] is not None:continue
+            novel=0
+            for key,value in c['features'].items():
+                previous_values=[f[key] for f in known_features if f.get(key) is not None]
+                if value is None or not previous_values:continue
+                if type(value) in (int,float) and all(type(v) in (int,float) for v in previous_values):
+                    novel+=not min(previous_values)<=value<=max(previous_values)
+                else:novel+=value not in previous_values
+            questions.append({'case_id':c['id'],'score':novel/max(1,len(c['features'])),
+                'selection_reason':'coverage_probe',
+                'predictions':[{'rule_id':r['id'],'outcome':predict(r,c['features'])} for r in active],
+                'question':f"Spot-check {c['summary'] or c['id']}: the remaining rules agree, but may share a mistaken assumption. What is the correct outcome and why?"})
     questions.sort(key=lambda q:(-q['score'],q['case_id']))
     return {'active_rule_ids':[r['id'] for r in active],'statuses':statuses,'questions':questions,
             'answered_questions':len([c for c in project['cases'] if c['split']=='question' and c['outcome'] is not None])}
@@ -197,8 +236,9 @@ def freeze(project,study,rule_id,reviewer,review_note,approval_type='demo',*,sto
     initial_project=copy.deepcopy(project)
     for c in initial_project['cases']:
         if c['split']=='question':c['outcome']=None;c['label_source']='';c['expert_reason']=''
-    initial=inspect(initial_project,study)
-    before=[r for r in study['candidates'] if r['id'] in initial['active_rule_ids']]
+    initial_study={**study,'candidates':study.get('initial_candidates',study['candidates'])}
+    initial=inspect(initial_project,initial_study)
+    before=[r for r in initial_study['candidates'] if r['id'] in initial['active_rule_ids']]
     after=[r for r in study['candidates'] if r['id'] in analysis['active_rule_ids']]
     tests=[c for c in project['cases'] if c['split']=='test']
     majority=Counter(c['outcome'] for c in project['cases'] if c['split']=='train').most_common(1)[0][0]
