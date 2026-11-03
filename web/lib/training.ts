@@ -54,7 +54,7 @@ export const validationSchema=z.object({kind:z.literal("training_validation"),gu
   cases:z.array(predictionRow.extend({actual:text,label_source:text})),consistent_before:z.number().int(),consistent_after:z.number().int(),questions_answered:z.number().int(),limitations:text});
 export const sessionSchema=z.object({project:projectSchema,study:studySchema.nullable().default(null),
   inspection:inspectionSchema.nullable().default(null),frozen:frozenSchema.nullable().default(null),
-  markdown:text.default(""),validation:validationSchema.nullable().default(null),
+  markdown:z.string().max(180000).default(""),validation:validationSchema.nullable().default(null),
   business:z.object({before_minutes:z.number().nonnegative().nullable(),after_minutes:z.number().nonnegative().nullable(),notes:text}).default({before_minutes:null,after_minutes:null,notes:""})});
 export type TrainingSession=z.infer<typeof sessionSchema>;
 export function newSession(project=emptyProject()):TrainingSession {return {project,study:null,inspection:null,frozen:null,markdown:"",validation:null,business:{before_minutes:null,after_minutes:null,notes:""}};}

@@ -160,6 +160,7 @@ def propose(client,project,*,previous=None):
     for r in candidates:validate_rule(r,project)
     if previous:
         return {**copy.deepcopy(previous),'candidates':candidates,
+                'provenance':'MetaClient.ask_json. Initial proposals and the original direct baseline excluded question outcomes. Revisions use attributed question answers; validation outcomes remain excluded.',
                 'initial_candidates':copy.deepcopy(previous.get('initial_candidates',previous['candidates'])),
                 'revision_history':[*previous.get('revision_history',[]),
                     {'revised_at':datetime.now(timezone.utc).isoformat(),
@@ -320,7 +321,15 @@ def guide_markdown(frozen):
     for i,step in enumerate(r['steps'],1):
         lines.append(f"{i}. If {' AND '.join(condition_text(c,labels) for c in step['if_all'])}: **{step['then']}**.")
     lines.extend([f"Otherwise: {r.get('otherwise') or 'Ask the expert; no prediction'}.",
-        'Unknown or incomparable evidence: ask the expert.','', '## Evidence and limitations',
+        'Unknown or incomparable evidence: ask the expert.','', '## Reviewed examples'])
+    examples=[c for c in p['cases'] if c['split']!='test' and c['outcome'] is not None]
+    for c in examples[:5]:
+        facts='; '.join(f"{labels.get(k,k)}: {str(v)[:160]}" for k,v in c['features'].items())
+        lines.extend([f"### {c['summary'] or c['id']}",facts,f"Recorded outcome: **{c['outcome']}**.",
+                      f"Attributed to: {c['label_source']}",f"Source: {c.get('source','Not recorded')}"])
+        if c.get('expert_reason'):lines.append(f"Reviewer explanation: {c['expert_reason']}")
+    if len(examples)>5:lines.append('First five examples shown; the session export preserves the full record.')
+    lines.extend(['## Evidence and limitations',
         f"Training cases: {', '.join(r['evidence_case_ids'])}",
         f"Model proposal: {r['reason']}",f"Guide version: {frozen['id']}",f"Fingerprint: {frozen['fingerprint']}",
         'This captures reviewed practice for the stated scope; it is not manufacturer authorization or a compliance finding.'])

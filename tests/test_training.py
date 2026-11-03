@@ -59,6 +59,8 @@ def test_freeze_then_score_and_refuse_dataset_mutation(tmp_path):
     frozen=freeze(p,s,'scratch','Scripted test reviewer','SYNTHETIC ONLY','demo',store=tmp_path)
     assert frozen['consistent_before']==2 and frozen['consistent_after']==1
     assert 'DEMONSTRATION ONLY' in guide_markdown(frozen)
+    assert 'Synthetic expert' in guide_markdown(frozen)
+    assert 'SYNTHETIC x1' not in guide_markdown(frozen)
     with pytest.raises(ValueError):validate_frozen(frozen['id'],p,store=tmp_path)
     for c,label in zip(p['cases'][3:],['reject','accept','accept']):
         c.update(outcome=label,label_source='Scripted held-out reference')
