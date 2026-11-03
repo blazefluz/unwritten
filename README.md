@@ -10,6 +10,42 @@ The warehouse example remains available through the original rule-learning CLI.
 
 ## Review any task
 
+### Expert-reviewed training guides
+
+The primary **Training guide** workspace turns inspection/triage examples into a
+reviewable decision guide. Reviewers define observable features and attributed
+outcomes, reserving separate cases for questions and validation. Meta proposes
+competing decision lists; Python checks them and selects cases where consistent
+rules disagree. When candidates all agree, a separately labelled spot-check can
+probe unfamiliar feature values. An attributed answer can reject every explanation;
+a bounded Meta revision then uses that answer while retaining the original rules
+and direct baseline. Validation outcomes stay excluded.
+
+Choose a consistent rule, record a demonstration review or expert self-attestation,
+and freeze predictions before entering validation outcomes. Local server snapshots
+and the first scored labels are retained in `.unwritten-runs/training/`. Code
+reports agreement and coverage, abstentions, a direct Meta baseline without question
+answers, the training-majority baseline and an optional declared task baseline.
+Unknown evidence abstains. Review is not identity verification or compliance
+certification. Feature annotation is currently assisted by a reviewer, not fully
+automatic video-to-policy extraction.
+
+**Load cable pilot** uses published measurements and transcribed preferences;
+**Load synthetic exercise** uses explicitly scripted rules and outcomes. Neither
+is a customer deployment. Proposal costs two Meta requests; saved-rule checks,
+question selection, freezing, scoring and exports need no model calls. Only the
+proposal step requires `MODEL_API_KEY`. Local server/Python access is still needed
+for deterministic checks and frozen snapshots.
+
+The [recorded development pilot](evaluation/training-guide-pilot.md) preserves both
+the initial shared-assumption failure and the revised result; it is not customer
+validation or proof of superiority to a strong baseline.
+
+Read [the business validation protocol](evaluation/business-pilot-protocol.md) before
+claiming training-time savings or decision quality. Guide sessions persist locally
+and export as JSON; reviewed guides export as Markdown. Imported provenance is
+self-reported and results should be rerun against the original local snapshot.
+
 ### Next.js workspace
 
 ```bash
@@ -210,7 +246,10 @@ The general task workflow, reference citation checker, revision notebook and
 expert-answer reanalysis were also built during the event. A clearly labelled
 offline sample is in `examples/synthetic-workflow.html`.
 The Next.js workspace, offline annotation editor, chronological action evaluation,
-expert-answer review controls and local Python bridge are new work too.
+expert-answer review controls and local Python bridge are new work too. The
+training-guide case editor, competing-rule checks, disagreement and coverage
+questions, bounded revisions, reviewer attestation, frozen validation and guide
+exports were also built during the event.
 
 Third-party pieces we did not write:
 

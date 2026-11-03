@@ -1,0 +1,1475 @@
+{
+  "project": {
+    "version": 1,
+    "title": "USB cable comparison \u00b7 published-video pilot",
+    "task": "Capture a reviewable guide to predicting which of two tested cables the creator ranks higher.",
+    "scope": "One published video by pileofstuff (CC BY), one resistive test setup. Values are prior Meta observations; preference labels are assistant transcriptions of published ordering, not independently expert-verified. Not electrical compliance or real business validation.",
+    "outcomes": [
+      "left",
+      "right"
+    ],
+    "features": [
+      {
+        "key": "left_voltage",
+        "label": "Left cable voltage (V)",
+        "type": "number"
+      },
+      {
+        "key": "right_voltage",
+        "label": "Right cable voltage (V)",
+        "type": "number"
+      }
+    ],
+    "cases": [
+      {
+        "id": "train-1",
+        "summary": "Compare c4 with c1",
+        "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+        "time_start": null,
+        "features": {
+          "left_voltage": 4.7139,
+          "right_voltage": 4.492
+        },
+        "split": "train",
+        "outcome": "left",
+        "label_source": "Creator's published ordering, transcribed by coding assistant",
+        "expert_reason": ""
+      },
+      {
+        "id": "train-2",
+        "summary": "Compare c3 with c1",
+        "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+        "time_start": null,
+        "features": {
+          "left_voltage": 4.3069,
+          "right_voltage": 4.492
+        },
+        "split": "train",
+        "outcome": "right",
+        "label_source": "Creator's published ordering, transcribed by coding assistant",
+        "expert_reason": ""
+      },
+      {
+        "id": "train-3",
+        "summary": "Compare c1 with c3",
+        "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+        "time_start": null,
+        "features": {
+          "left_voltage": 4.492,
+          "right_voltage": 4.3069
+        },
+        "split": "train",
+        "outcome": "left",
+        "label_source": "Creator's published ordering, transcribed by coding assistant",
+        "expert_reason": ""
+      },
+      {
+        "id": "question-1",
+        "summary": "Compare c2 with c1",
+        "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+        "time_start": null,
+        "features": {
+          "left_voltage": -4.5143,
+          "right_voltage": 4.492
+        },
+        "split": "question",
+        "outcome": "left",
+        "label_source": "pileofstuff\u2019s published final ordering, transcribed by coding assistant; not an expert interview",
+        "expert_reason": "The creator places c2 ahead of c1. Their written labels are 4.51 and 4.48; the negative meter sign is not used in that published ordering."
+      },
+      {
+        "id": "validation-1",
+        "summary": "Compare c5 with c1",
+        "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+        "time_start": null,
+        "features": {
+          "left_voltage": -3.5029,
+          "right_voltage": 4.492
+        },
+        "split": "test",
+        "outcome": "right",
+        "label_source": "Creator\u2019s published final ordering, transcribed by coding assistant; not independently human-verified",
+        "expert_reason": ""
+      },
+      {
+        "id": "validation-2",
+        "summary": "Compare c6 with c3",
+        "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+        "time_start": null,
+        "features": {
+          "left_voltage": -4.4689,
+          "right_voltage": 4.3069
+        },
+        "split": "test",
+        "outcome": "left",
+        "label_source": "Creator\u2019s published final ordering, transcribed by coding assistant; not independently human-verified",
+        "expert_reason": ""
+      },
+      {
+        "id": "validation-3",
+        "summary": "Compare c7 with c3",
+        "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+        "time_start": null,
+        "features": {
+          "left_voltage": -4.1647,
+          "right_voltage": 4.3069
+        },
+        "split": "test",
+        "outcome": "right",
+        "label_source": "Creator\u2019s published final ordering, transcribed by coding assistant; not independently human-verified",
+        "expert_reason": ""
+      }
+    ],
+    "baseline_rule": {
+      "id": "known-magnitude-baseline",
+      "title": "Predeclared magnitude baseline",
+      "reason": "Simple mathematical baseline, not inferred or expert-approved.",
+      "evidence_case_ids": [],
+      "steps": [
+        {
+          "if_all": [
+            {
+              "feature": "left_voltage",
+              "op": "gt",
+              "value": null,
+              "other_feature": "right_voltage",
+              "absolute": true
+            }
+          ],
+          "then": "left"
+        },
+        {
+          "if_all": [
+            {
+              "feature": "left_voltage",
+              "op": "lt",
+              "value": null,
+              "other_feature": "right_voltage",
+              "absolute": true
+            }
+          ],
+          "then": "right"
+        }
+      ],
+      "otherwise": null
+    }
+  },
+  "study": {
+    "kind": "training_study",
+    "dataset_fingerprint": "7b348202320b4b21f711d90f20938730e30585cca087c8cf1e47cfbe4f4140a4",
+    "created_at": "2026-11-03T02:16:55.311988+00:00",
+    "candidates": [
+      {
+        "id": "abs-higher-wins-symmetric",
+        "title": "Higher absolute voltage wins (symmetric)",
+        "reason": "Visible: train-1 left 4.7139 vs right 4.492 -> left; train-2 left 4.3069 vs right 4.492 -> right; train-3 left 4.492 vs right 4.3069 -> left; question-1 left -4.5143 vs right 4.492 -> left. Testimony for question-1 (not independently verified): written labels 4.51 and 4.48, negative meter sign not used in published ordering. Inferred (not visible): creator ranks higher magnitude higher, ignoring sign. Raw higher-wins fails question-1, so replaced with absolute version. Exact tie not observed, so tie is underdetermined - abstain.",
+        "evidence_case_ids": [
+          "train-1",
+          "train-2",
+          "train-3",
+          "question-1"
+        ],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "left_voltage",
+                "op": "gt",
+                "value": null,
+                "other_feature": "right_voltage",
+                "absolute": true
+              }
+            ],
+            "then": "left"
+          },
+          {
+            "if_all": [
+              {
+                "feature": "right_voltage",
+                "op": "gt",
+                "value": null,
+                "other_feature": "left_voltage",
+                "absolute": true
+              }
+            ],
+            "then": "right"
+          }
+        ],
+        "otherwise": null
+      },
+      {
+        "id": "abs-left-bar-only",
+        "title": "Left absolute bar only",
+        "reason": "Visible: absolute left values train-1 4.7139 -> left, train-2 4.3069 -> right, train-3 4.492 -> left, question-1 4.5143 -> left; right value 4.492 occurs with both left and right outcomes so right alone does not separate. Testimony (not verified): negative sign not used. Inferred alternative (not visible): left magnitude bar only with illustrative 4.4 between observed 4.3069 and 4.492, not official guidance. Fits all four. Diverges from symmetric when both high but right higher absolute, or both low but left higher.",
+        "evidence_case_ids": [
+          "train-1",
+          "train-2",
+          "train-3",
+          "question-1"
+        ],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "left_voltage",
+                "op": "gt",
+                "value": 4.4,
+                "other_feature": null,
+                "absolute": true
+              }
+            ],
+            "then": "left"
+          }
+        ],
+        "otherwise": "right"
+      },
+      {
+        "id": "left-default-right-needs-high-abs",
+        "title": "Left default unless right beats left absolute and is high",
+        "reason": "Visible: same four left/right pairs and outcomes as above. Testimony (not verified): sign ignored. Inferred alternative (not visible): default left unless right both beats left in magnitude and clears illustrative 4.4, not official guidance. Fits all four: train-1 fails right>left absolute, train-2 meets both, train-3 fails right>left, question-1 fails right>left absolute (4.492 vs 4.5143). Predicts left when right beats left absolute but both low, unlike symmetric.",
+        "evidence_case_ids": [
+          "train-1",
+          "train-2",
+          "train-3",
+          "question-1"
+        ],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "right_voltage",
+                "op": "gt",
+                "value": null,
+                "other_feature": "left_voltage",
+                "absolute": true
+              },
+              {
+                "feature": "right_voltage",
+                "op": "gt",
+                "value": 4.4,
+                "other_feature": null,
+                "absolute": true
+              }
+            ],
+            "then": "right"
+          }
+        ],
+        "otherwise": "left"
+      },
+      {
+        "id": "very-high-left-abs-dominance",
+        "title": "Very high left absolute dominates, otherwise absolute higher wins",
+        "reason": "Visible: train-1 left 4.7139 is unique high; others use only magnitudes 4.3069, 4.492, 4.5143. Testimony (not verified): sign ignored. Inferred alternative (not visible): very high left magnitude wins outright with illustrative >=4.7 between observed 4.5143 and 4.7139, not official guidance, otherwise higher absolute wins. Fits all four. Predicts left even if right higher absolute when left is very high, unlike symmetric.",
+        "evidence_case_ids": [
+          "train-1",
+          "train-2",
+          "train-3",
+          "question-1"
+        ],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "left_voltage",
+                "op": "gte",
+                "value": 4.7,
+                "other_feature": null,
+                "absolute": true
+              }
+            ],
+            "then": "left"
+          },
+          {
+            "if_all": [
+              {
+                "feature": "right_voltage",
+                "op": "gt",
+                "value": null,
+                "other_feature": "left_voltage",
+                "absolute": true
+              }
+            ],
+            "then": "right"
+          }
+        ],
+        "otherwise": "left"
+      }
+    ],
+    "provenance": "MetaClient.ask_json; Muse Spark; no question or validation labels sent to the model",
+    "initial_candidates": [
+      {
+        "id": "c1-higher-wins-symmetric",
+        "title": "Higher voltage wins (symmetric)",
+        "reason": "Visible: train-1 left 4.7139 vs right 4.492 -> left; train-2 left 4.3069 vs right 4.492 -> right; train-3 left 4.492 vs right 4.3069 -> left. Inferred (not visible): creator ranks higher voltage higher. Fits all three. Exact tie not observed, so abstain on tie is underdetermined.",
+        "evidence_case_ids": [
+          "train-1",
+          "train-2",
+          "train-3"
+        ],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "left_voltage",
+                "op": "gt",
+                "value": null,
+                "other_feature": "right_voltage",
+                "absolute": false
+              }
+            ],
+            "then": "left"
+          },
+          {
+            "if_all": [
+              {
+                "feature": "right_voltage",
+                "op": "gt",
+                "value": null,
+                "other_feature": "left_voltage",
+                "absolute": false
+              }
+            ],
+            "then": "right"
+          }
+        ],
+        "otherwise": null
+      },
+      {
+        "id": "c2-left-absolute-threshold",
+        "title": "Left absolute bar only",
+        "reason": "Visible: left voltages train-1 4.7139 -> left, train-2 4.3069 -> right, train-3 4.492 -> left; right voltage 4.492 occurs in train-1 -> left and train-2 -> right so right value alone does not separate. Inferred alternative: left absolute bar with illustrative 4.4 between observed 4.3069 and 4.492, not official guidance, predicts left if above else right. Fits all three. Diverges from symmetric when both high but right higher.",
+        "evidence_case_ids": [
+          "train-1",
+          "train-2",
+          "train-3"
+        ],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "left_voltage",
+                "op": "gt",
+                "value": 4.4,
+                "other_feature": null,
+                "absolute": false
+              }
+            ],
+            "then": "left"
+          }
+        ],
+        "otherwise": "right"
+      },
+      {
+        "id": "c3-left-default-right-needs-high",
+        "title": "Left default unless right beats left and is high",
+        "reason": "Visible: same three left/right voltage pairs and outcomes as above. Inferred alternative: default left unless right both beats left and clears illustrative mid bar 4.4, not official guidance. Fits all three: train-1 fails right>left, train-2 meets both, train-3 fails right>left. Predicts left when right beats left but both low, unlike symmetric.",
+        "evidence_case_ids": [
+          "train-1",
+          "train-2",
+          "train-3"
+        ],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "right_voltage",
+                "op": "gt",
+                "value": null,
+                "other_feature": "left_voltage",
+                "absolute": false
+              },
+              {
+                "feature": "right_voltage",
+                "op": "gt",
+                "value": 4.4,
+                "other_feature": null,
+                "absolute": false
+              }
+            ],
+            "then": "right"
+          }
+        ],
+        "otherwise": "left"
+      },
+      {
+        "id": "c4-high-left-dominance",
+        "title": "Very high left dominates, otherwise higher wins",
+        "reason": "Visible: train-1 left 4.7139 is unique high not repeated; train-2 and train-3 use only 4.3069 and 4.492. Inferred alternative: very high left wins outright with illustrative >=4.7 between observed 4.492 and 4.7139, not official guidance, otherwise higher wins. Fits all three. Predicts left even if right higher when left is very high, unlike symmetric.",
+        "evidence_case_ids": [
+          "train-1",
+          "train-2",
+          "train-3"
+        ],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "left_voltage",
+                "op": "gte",
+                "value": 4.7,
+                "other_feature": null,
+                "absolute": false
+              }
+            ],
+            "then": "left"
+          },
+          {
+            "if_all": [
+              {
+                "feature": "right_voltage",
+                "op": "gt",
+                "value": null,
+                "other_feature": "left_voltage",
+                "absolute": false
+              }
+            ],
+            "then": "right"
+          }
+        ],
+        "otherwise": "left"
+      }
+    ],
+    "revision_history": [
+      {
+        "revised_at": "2026-11-03T02:22:41.803186+00:00",
+        "candidates": [
+          {
+            "id": "c1-higher-wins-symmetric",
+            "title": "Higher voltage wins (symmetric)",
+            "reason": "Visible: train-1 left 4.7139 vs right 4.492 -> left; train-2 left 4.3069 vs right 4.492 -> right; train-3 left 4.492 vs right 4.3069 -> left. Inferred (not visible): creator ranks higher voltage higher. Fits all three. Exact tie not observed, so abstain on tie is underdetermined.",
+            "evidence_case_ids": [
+              "train-1",
+              "train-2",
+              "train-3"
+            ],
+            "steps": [
+              {
+                "if_all": [
+                  {
+                    "feature": "left_voltage",
+                    "op": "gt",
+                    "value": null,
+                    "other_feature": "right_voltage",
+                    "absolute": false
+                  }
+                ],
+                "then": "left"
+              },
+              {
+                "if_all": [
+                  {
+                    "feature": "right_voltage",
+                    "op": "gt",
+                    "value": null,
+                    "other_feature": "left_voltage",
+                    "absolute": false
+                  }
+                ],
+                "then": "right"
+              }
+            ],
+            "otherwise": null
+          },
+          {
+            "id": "c2-left-absolute-threshold",
+            "title": "Left absolute bar only",
+            "reason": "Visible: left voltages train-1 4.7139 -> left, train-2 4.3069 -> right, train-3 4.492 -> left; right voltage 4.492 occurs in train-1 -> left and train-2 -> right so right value alone does not separate. Inferred alternative: left absolute bar with illustrative 4.4 between observed 4.3069 and 4.492, not official guidance, predicts left if above else right. Fits all three. Diverges from symmetric when both high but right higher.",
+            "evidence_case_ids": [
+              "train-1",
+              "train-2",
+              "train-3"
+            ],
+            "steps": [
+              {
+                "if_all": [
+                  {
+                    "feature": "left_voltage",
+                    "op": "gt",
+                    "value": 4.4,
+                    "other_feature": null,
+                    "absolute": false
+                  }
+                ],
+                "then": "left"
+              }
+            ],
+            "otherwise": "right"
+          },
+          {
+            "id": "c3-left-default-right-needs-high",
+            "title": "Left default unless right beats left and is high",
+            "reason": "Visible: same three left/right voltage pairs and outcomes as above. Inferred alternative: default left unless right both beats left and clears illustrative mid bar 4.4, not official guidance. Fits all three: train-1 fails right>left, train-2 meets both, train-3 fails right>left. Predicts left when right beats left but both low, unlike symmetric.",
+            "evidence_case_ids": [
+              "train-1",
+              "train-2",
+              "train-3"
+            ],
+            "steps": [
+              {
+                "if_all": [
+                  {
+                    "feature": "right_voltage",
+                    "op": "gt",
+                    "value": null,
+                    "other_feature": "left_voltage",
+                    "absolute": false
+                  },
+                  {
+                    "feature": "right_voltage",
+                    "op": "gt",
+                    "value": 4.4,
+                    "other_feature": null,
+                    "absolute": false
+                  }
+                ],
+                "then": "right"
+              }
+            ],
+            "otherwise": "left"
+          },
+          {
+            "id": "c4-high-left-dominance",
+            "title": "Very high left dominates, otherwise higher wins",
+            "reason": "Visible: train-1 left 4.7139 is unique high not repeated; train-2 and train-3 use only 4.3069 and 4.492. Inferred alternative: very high left wins outright with illustrative >=4.7 between observed 4.492 and 4.7139, not official guidance, otherwise higher wins. Fits all three. Predicts left even if right higher when left is very high, unlike symmetric.",
+            "evidence_case_ids": [
+              "train-1",
+              "train-2",
+              "train-3"
+            ],
+            "steps": [
+              {
+                "if_all": [
+                  {
+                    "feature": "left_voltage",
+                    "op": "gte",
+                    "value": 4.7,
+                    "other_feature": null,
+                    "absolute": false
+                  }
+                ],
+                "then": "left"
+              },
+              {
+                "if_all": [
+                  {
+                    "feature": "right_voltage",
+                    "op": "gt",
+                    "value": null,
+                    "other_feature": "left_voltage",
+                    "absolute": false
+                  }
+                ],
+                "then": "right"
+              }
+            ],
+            "otherwise": "left"
+          }
+        ],
+        "inspection": {
+          "active_rule_ids": [],
+          "statuses": [
+            {
+              "id": "c1-higher-wins-symmetric",
+              "consistent": false,
+              "counterexample_ids": [
+                "question-1"
+              ]
+            },
+            {
+              "id": "c2-left-absolute-threshold",
+              "consistent": false,
+              "counterexample_ids": [
+                "question-1"
+              ]
+            },
+            {
+              "id": "c3-left-default-right-needs-high",
+              "consistent": false,
+              "counterexample_ids": [
+                "question-1"
+              ]
+            },
+            {
+              "id": "c4-high-left-dominance",
+              "consistent": false,
+              "counterexample_ids": [
+                "question-1"
+              ]
+            }
+          ],
+          "questions": [],
+          "answered_questions": 1
+        }
+      }
+    ],
+    "direct_predictions": [
+      {
+        "case_id": "validation-1",
+        "outcome": "right",
+        "reason": "Observation: right_voltage 4.492 > left_voltage -3.5029. Inference: train-1, train-2, train-3 all rank higher voltage higher, so predict right."
+      },
+      {
+        "case_id": "validation-2",
+        "outcome": "right",
+        "reason": "Observation: right_voltage 4.3069 > left_voltage -4.4689. Inference: training pattern favors higher voltage, so predict right."
+      },
+      {
+        "case_id": "validation-3",
+        "outcome": "right",
+        "reason": "Observation: right_voltage 4.3069 > left_voltage -4.1647. Inference: training pattern favors higher voltage, so predict right."
+      }
+    ]
+  },
+  "inspection": {
+    "active_rule_ids": [
+      "abs-higher-wins-symmetric",
+      "abs-left-bar-only",
+      "left-default-right-needs-high-abs",
+      "very-high-left-abs-dominance"
+    ],
+    "statuses": [
+      {
+        "id": "abs-higher-wins-symmetric",
+        "consistent": true,
+        "counterexample_ids": []
+      },
+      {
+        "id": "abs-left-bar-only",
+        "consistent": true,
+        "counterexample_ids": []
+      },
+      {
+        "id": "left-default-right-needs-high-abs",
+        "consistent": true,
+        "counterexample_ids": []
+      },
+      {
+        "id": "very-high-left-abs-dominance",
+        "consistent": true,
+        "counterexample_ids": []
+      }
+    ],
+    "questions": [],
+    "answered_questions": 1
+  },
+  "frozen": {
+    "kind": "frozen_training_guide",
+    "id": "5db9c683-1665-4f9c-8c9a-263ffb50017d",
+    "frozen_at": "2026-11-03T02:23:54.092927+00:00",
+    "fingerprint": "25d337b13055ccf9b5f07c68626b25fd6ebb8307680daa795a518f5c5e0fe563",
+    "project": {
+      "version": 1,
+      "title": "USB cable comparison \u00b7 published-video pilot",
+      "task": "Capture a reviewable guide to predicting which of two tested cables the creator ranks higher.",
+      "scope": "One published video by pileofstuff (CC BY), one resistive test setup. Values are prior Meta observations; preference labels are assistant transcriptions of published ordering, not independently expert-verified. Not electrical compliance or real business validation.",
+      "outcomes": [
+        "left",
+        "right"
+      ],
+      "features": [
+        {
+          "key": "left_voltage",
+          "label": "Left cable voltage (V)",
+          "type": "number"
+        },
+        {
+          "key": "right_voltage",
+          "label": "Right cable voltage (V)",
+          "type": "number"
+        }
+      ],
+      "cases": [
+        {
+          "id": "train-1",
+          "summary": "Compare c4 with c1",
+          "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+          "time_start": null,
+          "features": {
+            "left_voltage": 4.7139,
+            "right_voltage": 4.492
+          },
+          "split": "train",
+          "outcome": "left",
+          "label_source": "Creator's published ordering, transcribed by coding assistant",
+          "expert_reason": ""
+        },
+        {
+          "id": "train-2",
+          "summary": "Compare c3 with c1",
+          "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+          "time_start": null,
+          "features": {
+            "left_voltage": 4.3069,
+            "right_voltage": 4.492
+          },
+          "split": "train",
+          "outcome": "right",
+          "label_source": "Creator's published ordering, transcribed by coding assistant",
+          "expert_reason": ""
+        },
+        {
+          "id": "train-3",
+          "summary": "Compare c1 with c3",
+          "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+          "time_start": null,
+          "features": {
+            "left_voltage": 4.492,
+            "right_voltage": 4.3069
+          },
+          "split": "train",
+          "outcome": "left",
+          "label_source": "Creator's published ordering, transcribed by coding assistant",
+          "expert_reason": ""
+        },
+        {
+          "id": "question-1",
+          "summary": "Compare c2 with c1",
+          "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+          "time_start": null,
+          "features": {
+            "left_voltage": -4.5143,
+            "right_voltage": 4.492
+          },
+          "split": "question",
+          "outcome": "left",
+          "label_source": "pileofstuff\u2019s published final ordering, transcribed by coding assistant; not an expert interview",
+          "expert_reason": "The creator places c2 ahead of c1. Their written labels are 4.51 and 4.48; the negative meter sign is not used in that published ordering."
+        },
+        {
+          "id": "validation-1",
+          "summary": "Compare c5 with c1",
+          "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+          "time_start": null,
+          "features": {
+            "left_voltage": -3.5029,
+            "right_voltage": 4.492
+          },
+          "split": "test",
+          "outcome": null,
+          "label_source": "",
+          "expert_reason": ""
+        },
+        {
+          "id": "validation-2",
+          "summary": "Compare c6 with c3",
+          "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+          "time_start": null,
+          "features": {
+            "left_voltage": -4.4689,
+            "right_voltage": 4.3069
+          },
+          "split": "test",
+          "outcome": null,
+          "label_source": "",
+          "expert_reason": ""
+        },
+        {
+          "id": "validation-3",
+          "summary": "Compare c7 with c3",
+          "source": "https://www.youtube.com/watch?v=5HsQNCVYYvM",
+          "time_start": null,
+          "features": {
+            "left_voltage": -4.1647,
+            "right_voltage": 4.3069
+          },
+          "split": "test",
+          "outcome": null,
+          "label_source": "",
+          "expert_reason": ""
+        }
+      ],
+      "baseline_rule": {
+        "id": "known-magnitude-baseline",
+        "title": "Predeclared magnitude baseline",
+        "reason": "Simple mathematical baseline, not inferred or expert-approved.",
+        "evidence_case_ids": [],
+        "steps": [
+          {
+            "if_all": [
+              {
+                "feature": "left_voltage",
+                "op": "gt",
+                "value": null,
+                "other_feature": "right_voltage",
+                "absolute": true
+              }
+            ],
+            "then": "left"
+          },
+          {
+            "if_all": [
+              {
+                "feature": "left_voltage",
+                "op": "lt",
+                "value": null,
+                "other_feature": "right_voltage",
+                "absolute": true
+              }
+            ],
+            "then": "right"
+          }
+        ],
+        "otherwise": null
+      }
+    },
+    "study": {
+      "kind": "training_study",
+      "dataset_fingerprint": "7b348202320b4b21f711d90f20938730e30585cca087c8cf1e47cfbe4f4140a4",
+      "created_at": "2026-11-03T02:16:55.311988+00:00",
+      "candidates": [
+        {
+          "id": "abs-higher-wins-symmetric",
+          "title": "Higher absolute voltage wins (symmetric)",
+          "reason": "Visible: train-1 left 4.7139 vs right 4.492 -> left; train-2 left 4.3069 vs right 4.492 -> right; train-3 left 4.492 vs right 4.3069 -> left; question-1 left -4.5143 vs right 4.492 -> left. Testimony for question-1 (not independently verified): written labels 4.51 and 4.48, negative meter sign not used in published ordering. Inferred (not visible): creator ranks higher magnitude higher, ignoring sign. Raw higher-wins fails question-1, so replaced with absolute version. Exact tie not observed, so tie is underdetermined - abstain.",
+          "evidence_case_ids": [
+            "train-1",
+            "train-2",
+            "train-3",
+            "question-1"
+          ],
+          "steps": [
+            {
+              "if_all": [
+                {
+                  "feature": "left_voltage",
+                  "op": "gt",
+                  "value": null,
+                  "other_feature": "right_voltage",
+                  "absolute": true
+                }
+              ],
+              "then": "left"
+            },
+            {
+              "if_all": [
+                {
+                  "feature": "right_voltage",
+                  "op": "gt",
+                  "value": null,
+                  "other_feature": "left_voltage",
+                  "absolute": true
+                }
+              ],
+              "then": "right"
+            }
+          ],
+          "otherwise": null
+        },
+        {
+          "id": "abs-left-bar-only",
+          "title": "Left absolute bar only",
+          "reason": "Visible: absolute left values train-1 4.7139 -> left, train-2 4.3069 -> right, train-3 4.492 -> left, question-1 4.5143 -> left; right value 4.492 occurs with both left and right outcomes so right alone does not separate. Testimony (not verified): negative sign not used. Inferred alternative (not visible): left magnitude bar only with illustrative 4.4 between observed 4.3069 and 4.492, not official guidance. Fits all four. Diverges from symmetric when both high but right higher absolute, or both low but left higher.",
+          "evidence_case_ids": [
+            "train-1",
+            "train-2",
+            "train-3",
+            "question-1"
+          ],
+          "steps": [
+            {
+              "if_all": [
+                {
+                  "feature": "left_voltage",
+                  "op": "gt",
+                  "value": 4.4,
+                  "other_feature": null,
+                  "absolute": true
+                }
+              ],
+              "then": "left"
+            }
+          ],
+          "otherwise": "right"
+        },
+        {
+          "id": "left-default-right-needs-high-abs",
+          "title": "Left default unless right beats left absolute and is high",
+          "reason": "Visible: same four left/right pairs and outcomes as above. Testimony (not verified): sign ignored. Inferred alternative (not visible): default left unless right both beats left in magnitude and clears illustrative 4.4, not official guidance. Fits all four: train-1 fails right>left absolute, train-2 meets both, train-3 fails right>left, question-1 fails right>left absolute (4.492 vs 4.5143). Predicts left when right beats left absolute but both low, unlike symmetric.",
+          "evidence_case_ids": [
+            "train-1",
+            "train-2",
+            "train-3",
+            "question-1"
+          ],
+          "steps": [
+            {
+              "if_all": [
+                {
+                  "feature": "right_voltage",
+                  "op": "gt",
+                  "value": null,
+                  "other_feature": "left_voltage",
+                  "absolute": true
+                },
+                {
+                  "feature": "right_voltage",
+                  "op": "gt",
+                  "value": 4.4,
+                  "other_feature": null,
+                  "absolute": true
+                }
+              ],
+              "then": "right"
+            }
+          ],
+          "otherwise": "left"
+        },
+        {
+          "id": "very-high-left-abs-dominance",
+          "title": "Very high left absolute dominates, otherwise absolute higher wins",
+          "reason": "Visible: train-1 left 4.7139 is unique high; others use only magnitudes 4.3069, 4.492, 4.5143. Testimony (not verified): sign ignored. Inferred alternative (not visible): very high left magnitude wins outright with illustrative >=4.7 between observed 4.5143 and 4.7139, not official guidance, otherwise higher absolute wins. Fits all four. Predicts left even if right higher absolute when left is very high, unlike symmetric.",
+          "evidence_case_ids": [
+            "train-1",
+            "train-2",
+            "train-3",
+            "question-1"
+          ],
+          "steps": [
+            {
+              "if_all": [
+                {
+                  "feature": "left_voltage",
+                  "op": "gte",
+                  "value": 4.7,
+                  "other_feature": null,
+                  "absolute": true
+                }
+              ],
+              "then": "left"
+            },
+            {
+              "if_all": [
+                {
+                  "feature": "right_voltage",
+                  "op": "gt",
+                  "value": null,
+                  "other_feature": "left_voltage",
+                  "absolute": true
+                }
+              ],
+              "then": "right"
+            }
+          ],
+          "otherwise": "left"
+        }
+      ],
+      "provenance": "MetaClient.ask_json; Muse Spark; no question or validation labels sent to the model",
+      "initial_candidates": [
+        {
+          "id": "c1-higher-wins-symmetric",
+          "title": "Higher voltage wins (symmetric)",
+          "reason": "Visible: train-1 left 4.7139 vs right 4.492 -> left; train-2 left 4.3069 vs right 4.492 -> right; train-3 left 4.492 vs right 4.3069 -> left. Inferred (not visible): creator ranks higher voltage higher. Fits all three. Exact tie not observed, so abstain on tie is underdetermined.",
+          "evidence_case_ids": [
+            "train-1",
+            "train-2",
+            "train-3"
+          ],
+          "steps": [
+            {
+              "if_all": [
+                {
+                  "feature": "left_voltage",
+                  "op": "gt",
+                  "value": null,
+                  "other_feature": "right_voltage",
+                  "absolute": false
+                }
+              ],
+              "then": "left"
+            },
+            {
+              "if_all": [
+                {
+                  "feature": "right_voltage",
+                  "op": "gt",
+                  "value": null,
+                  "other_feature": "left_voltage",
+                  "absolute": false
+                }
+              ],
+              "then": "right"
+            }
+          ],
+          "otherwise": null
+        },
+        {
+          "id": "c2-left-absolute-threshold",
+          "title": "Left absolute bar only",
+          "reason": "Visible: left voltages train-1 4.7139 -> left, train-2 4.3069 -> right, train-3 4.492 -> left; right voltage 4.492 occurs in train-1 -> left and train-2 -> right so right value alone does not separate. Inferred alternative: left absolute bar with illustrative 4.4 between observed 4.3069 and 4.492, not official guidance, predicts left if above else right. Fits all three. Diverges from symmetric when both high but right higher.",
+          "evidence_case_ids": [
+            "train-1",
+            "train-2",
+            "train-3"
+          ],
+          "steps": [
+            {
+              "if_all": [
+                {
+                  "feature": "left_voltage",
+                  "op": "gt",
+                  "value": 4.4,
+                  "other_feature": null,
+                  "absolute": false
+                }
+              ],
+              "then": "left"
+            }
+          ],
+          "otherwise": "right"
+        },
+        {
+          "id": "c3-left-default-right-needs-high",
+          "title": "Left default unless right beats left and is high",
+          "reason": "Visible: same three left/right voltage pairs and outcomes as above. Inferred alternative: default left unless right both beats left and clears illustrative mid bar 4.4, not official guidance. Fits all three: train-1 fails right>left, train-2 meets both, train-3 fails right>left. Predicts left when right beats left but both low, unlike symmetric.",
+          "evidence_case_ids": [
+            "train-1",
+            "train-2",
+            "train-3"
+          ],
+          "steps": [
+            {
+              "if_all": [
+                {
+                  "feature": "right_voltage",
+                  "op": "gt",
+                  "value": null,
+                  "other_feature": "left_voltage",
+                  "absolute": false
+                },
+                {
+                  "feature": "right_voltage",
+                  "op": "gt",
+                  "value": 4.4,
+                  "other_feature": null,
+                  "absolute": false
+                }
+              ],
+              "then": "right"
+            }
+          ],
+          "otherwise": "left"
+        },
+        {
+          "id": "c4-high-left-dominance",
+          "title": "Very high left dominates, otherwise higher wins",
+          "reason": "Visible: train-1 left 4.7139 is unique high not repeated; train-2 and train-3 use only 4.3069 and 4.492. Inferred alternative: very high left wins outright with illustrative >=4.7 between observed 4.492 and 4.7139, not official guidance, otherwise higher wins. Fits all three. Predicts left even if right higher when left is very high, unlike symmetric.",
+          "evidence_case_ids": [
+            "train-1",
+            "train-2",
+            "train-3"
+          ],
+          "steps": [
+            {
+              "if_all": [
+                {
+                  "feature": "left_voltage",
+                  "op": "gte",
+                  "value": 4.7,
+                  "other_feature": null,
+                  "absolute": false
+                }
+              ],
+              "then": "left"
+            },
+            {
+              "if_all": [
+                {
+                  "feature": "right_voltage",
+                  "op": "gt",
+                  "value": null,
+                  "other_feature": "left_voltage",
+                  "absolute": false
+                }
+              ],
+              "then": "right"
+            }
+          ],
+          "otherwise": "left"
+        }
+      ],
+      "revision_history": [
+        {
+          "revised_at": "2026-11-03T02:22:41.803186+00:00",
+          "candidates": [
+            {
+              "id": "c1-higher-wins-symmetric",
+              "title": "Higher voltage wins (symmetric)",
+              "reason": "Visible: train-1 left 4.7139 vs right 4.492 -> left; train-2 left 4.3069 vs right 4.492 -> right; train-3 left 4.492 vs right 4.3069 -> left. Inferred (not visible): creator ranks higher voltage higher. Fits all three. Exact tie not observed, so abstain on tie is underdetermined.",
+              "evidence_case_ids": [
+                "train-1",
+                "train-2",
+                "train-3"
+              ],
+              "steps": [
+                {
+                  "if_all": [
+                    {
+                      "feature": "left_voltage",
+                      "op": "gt",
+                      "value": null,
+                      "other_feature": "right_voltage",
+                      "absolute": false
+                    }
+                  ],
+                  "then": "left"
+                },
+                {
+                  "if_all": [
+                    {
+                      "feature": "right_voltage",
+                      "op": "gt",
+                      "value": null,
+                      "other_feature": "left_voltage",
+                      "absolute": false
+                    }
+                  ],
+                  "then": "right"
+                }
+              ],
+              "otherwise": null
+            },
+            {
+              "id": "c2-left-absolute-threshold",
+              "title": "Left absolute bar only",
+              "reason": "Visible: left voltages train-1 4.7139 -> left, train-2 4.3069 -> right, train-3 4.492 -> left; right voltage 4.492 occurs in train-1 -> left and train-2 -> right so right value alone does not separate. Inferred alternative: left absolute bar with illustrative 4.4 between observed 4.3069 and 4.492, not official guidance, predicts left if above else right. Fits all three. Diverges from symmetric when both high but right higher.",
+              "evidence_case_ids": [
+                "train-1",
+                "train-2",
+                "train-3"
+              ],
+              "steps": [
+                {
+                  "if_all": [
+                    {
+                      "feature": "left_voltage",
+                      "op": "gt",
+                      "value": 4.4,
+                      "other_feature": null,
+                      "absolute": false
+                    }
+                  ],
+                  "then": "left"
+                }
+              ],
+              "otherwise": "right"
+            },
+            {
+              "id": "c3-left-default-right-needs-high",
+              "title": "Left default unless right beats left and is high",
+              "reason": "Visible: same three left/right voltage pairs and outcomes as above. Inferred alternative: default left unless right both beats left and clears illustrative mid bar 4.4, not official guidance. Fits all three: train-1 fails right>left, train-2 meets both, train-3 fails right>left. Predicts left when right beats left but both low, unlike symmetric.",
+              "evidence_case_ids": [
+                "train-1",
+                "train-2",
+                "train-3"
+              ],
+              "steps": [
+                {
+                  "if_all": [
+                    {
+                      "feature": "right_voltage",
+                      "op": "gt",
+                      "value": null,
+                      "other_feature": "left_voltage",
+                      "absolute": false
+                    },
+                    {
+                      "feature": "right_voltage",
+                      "op": "gt",
+                      "value": 4.4,
+                      "other_feature": null,
+                      "absolute": false
+                    }
+                  ],
+                  "then": "right"
+                }
+              ],
+              "otherwise": "left"
+            },
+            {
+              "id": "c4-high-left-dominance",
+              "title": "Very high left dominates, otherwise higher wins",
+              "reason": "Visible: train-1 left 4.7139 is unique high not repeated; train-2 and train-3 use only 4.3069 and 4.492. Inferred alternative: very high left wins outright with illustrative >=4.7 between observed 4.492 and 4.7139, not official guidance, otherwise higher wins. Fits all three. Predicts left even if right higher when left is very high, unlike symmetric.",
+              "evidence_case_ids": [
+                "train-1",
+                "train-2",
+                "train-3"
+              ],
+              "steps": [
+                {
+                  "if_all": [
+                    {
+                      "feature": "left_voltage",
+                      "op": "gte",
+                      "value": 4.7,
+                      "other_feature": null,
+                      "absolute": false
+                    }
+                  ],
+                  "then": "left"
+                },
+                {
+                  "if_all": [
+                    {
+                      "feature": "right_voltage",
+                      "op": "gt",
+                      "value": null,
+                      "other_feature": "left_voltage",
+                      "absolute": false
+                    }
+                  ],
+                  "then": "right"
+                }
+              ],
+              "otherwise": "left"
+            }
+          ],
+          "inspection": {
+            "active_rule_ids": [],
+            "statuses": [
+              {
+                "id": "c1-higher-wins-symmetric",
+                "consistent": false,
+                "counterexample_ids": [
+                  "question-1"
+                ]
+              },
+              {
+                "id": "c2-left-absolute-threshold",
+                "consistent": false,
+                "counterexample_ids": [
+                  "question-1"
+                ]
+              },
+              {
+                "id": "c3-left-default-right-needs-high",
+                "consistent": false,
+                "counterexample_ids": [
+                  "question-1"
+                ]
+              },
+              {
+                "id": "c4-high-left-dominance",
+                "consistent": false,
+                "counterexample_ids": [
+                  "question-1"
+                ]
+              }
+            ],
+            "questions": [],
+            "answered_questions": 1
+          }
+        }
+      ],
+      "direct_predictions": [
+        {
+          "case_id": "validation-1",
+          "outcome": "right",
+          "reason": "Observation: right_voltage 4.492 > left_voltage -3.5029. Inference: train-1, train-2, train-3 all rank higher voltage higher, so predict right."
+        },
+        {
+          "case_id": "validation-2",
+          "outcome": "right",
+          "reason": "Observation: right_voltage 4.3069 > left_voltage -4.4689. Inference: training pattern favors higher voltage, so predict right."
+        },
+        {
+          "case_id": "validation-3",
+          "outcome": "right",
+          "reason": "Observation: right_voltage 4.3069 > left_voltage -4.1647. Inference: training pattern favors higher voltage, so predict right."
+        }
+      ]
+    },
+    "analysis": {
+      "active_rule_ids": [
+        "abs-higher-wins-symmetric",
+        "abs-left-bar-only",
+        "left-default-right-needs-high-abs",
+        "very-high-left-abs-dominance"
+      ],
+      "statuses": [
+        {
+          "id": "abs-higher-wins-symmetric",
+          "consistent": true,
+          "counterexample_ids": []
+        },
+        {
+          "id": "abs-left-bar-only",
+          "consistent": true,
+          "counterexample_ids": []
+        },
+        {
+          "id": "left-default-right-needs-high-abs",
+          "consistent": true,
+          "counterexample_ids": []
+        },
+        {
+          "id": "very-high-left-abs-dominance",
+          "consistent": true,
+          "counterexample_ids": []
+        }
+      ],
+      "questions": [],
+      "answered_questions": 1
+    },
+    "selected_rule": {
+      "id": "abs-higher-wins-symmetric",
+      "title": "Higher absolute voltage wins (symmetric)",
+      "reason": "Visible: train-1 left 4.7139 vs right 4.492 -> left; train-2 left 4.3069 vs right 4.492 -> right; train-3 left 4.492 vs right 4.3069 -> left; question-1 left -4.5143 vs right 4.492 -> left. Testimony for question-1 (not independently verified): written labels 4.51 and 4.48, negative meter sign not used in published ordering. Inferred (not visible): creator ranks higher magnitude higher, ignoring sign. Raw higher-wins fails question-1, so replaced with absolute version. Exact tie not observed, so tie is underdetermined - abstain.",
+      "evidence_case_ids": [
+        "train-1",
+        "train-2",
+        "train-3",
+        "question-1"
+      ],
+      "steps": [
+        {
+          "if_all": [
+            {
+              "feature": "left_voltage",
+              "op": "gt",
+              "value": null,
+              "other_feature": "right_voltage",
+              "absolute": true
+            }
+          ],
+          "then": "left"
+        },
+        {
+          "if_all": [
+            {
+              "feature": "right_voltage",
+              "op": "gt",
+              "value": null,
+              "other_feature": "left_voltage",
+              "absolute": true
+            }
+          ],
+          "then": "right"
+        }
+      ],
+      "otherwise": null
+    },
+    "reviewer": "Coding assistant \u2014 demonstration reviewer, not an electronics expert",
+    "review_note": "Development pilot on published cable comparisons only. Candidate selected using general electrical knowledge, not an expert attestation. Reference preferences were transcribed by the coding assistant and these cases were used in earlier development. No manufacturer compliance, new-device generalization, real business adoption or ROI is established. Missing evidence and ties must abstain.",
+    "approval_type": "demo",
+    "approval_notice": "Self-attestation only; identity, expertise, operating safety and compliance are not verified.",
+    "predictions": [
+      {
+        "case_id": "validation-1",
+        "prediction": "right",
+        "consensus_before": "right",
+        "consensus_after": "right",
+        "direct_meta": "right",
+        "majority": "left",
+        "declared_baseline": "right"
+      },
+      {
+        "case_id": "validation-2",
+        "prediction": "left",
+        "consensus_before": null,
+        "consensus_after": "left",
+        "direct_meta": "right",
+        "majority": "left",
+        "declared_baseline": "left"
+      },
+      {
+        "case_id": "validation-3",
+        "prediction": "right",
+        "consensus_before": null,
+        "consensus_after": null,
+        "direct_meta": "right",
+        "majority": "left",
+        "declared_baseline": "right"
+      }
+    ],
+    "consistent_before": 4,
+    "consistent_after": 4
+  },
+  "markdown": "# USB cable comparison \u00b7 published-video pilot\n\nStatus: DEMONSTRATION ONLY\n\nTask: Capture a reviewable guide to predicting which of two tested cables the creator ranks higher.\n\nScope: One published video by pileofstuff (CC BY), one resistive test setup. Values are prior Meta observations; preference labels are assistant transcriptions of published ordering, not independently expert-verified. Not electrical compliance or real business validation.\n\nReviewer: Coding assistant \u2014 demonstration reviewer, not an electronics expert\n\nReview note: Development pilot on published cable comparisons only. Candidate selected using general electrical knowledge, not an expert attestation. Reference preferences were transcribed by the coding assistant and these cases were used in earlier development. No manufacturer compliance, new-device generalization, real business adoption or ROI is established. Missing evidence and ties must abstain.\n\nSelf-attestation only; identity, expertise, operating safety and compliance are not verified.\n\n\n\n## Decision guide\n\n1. If magnitude of Left cable voltage (V) is greater than magnitude of Right cable voltage (V): **left**.\n\n2. If magnitude of Right cable voltage (V) is greater than magnitude of Left cable voltage (V): **right**.\n\nOtherwise: Ask the expert; no prediction.\n\nUnknown or incomparable evidence: ask the expert.\n\n\n\n## Evidence and limitations\n\nTraining cases: train-1, train-2, train-3, question-1\n\nModel proposal: Visible: train-1 left 4.7139 vs right 4.492 -> left; train-2 left 4.3069 vs right 4.492 -> right; train-3 left 4.492 vs right 4.3069 -> left; question-1 left -4.5143 vs right 4.492 -> left. Testimony for question-1 (not independently verified): written labels 4.51 and 4.48, negative meter sign not used in published ordering. Inferred (not visible): creator ranks higher magnitude higher, ignoring sign. Raw higher-wins fails question-1, so replaced with absolute version. Exact tie not observed, so tie is underdetermined - abstain.\n\nGuide version: 5db9c683-1665-4f9c-8c9a-263ffb50017d\n\nFingerprint: 25d337b13055ccf9b5f07c68626b25fd6ebb8307680daa795a518f5c5e0fe563\n\nThis captures reviewed practice for the stated scope; it is not manufacturer authorization or a compliance finding.\n",
+  "validation": {
+    "kind": "training_validation",
+    "guide_id": "5db9c683-1665-4f9c-8c9a-263ffb50017d",
+    "guide_fingerprint": "25d337b13055ccf9b5f07c68626b25fd6ebb8307680daa795a518f5c5e0fe563",
+    "scores": {
+      "prediction": {
+        "correct": 3,
+        "total": 3,
+        "abstained": 0,
+        "answered": 3
+      },
+      "consensus_before": {
+        "correct": 1,
+        "total": 3,
+        "abstained": 2,
+        "answered": 1
+      },
+      "consensus_after": {
+        "correct": 2,
+        "total": 3,
+        "abstained": 1,
+        "answered": 2
+      },
+      "direct_meta": {
+        "correct": 2,
+        "total": 3,
+        "abstained": 0,
+        "answered": 3
+      },
+      "majority": {
+        "correct": 1,
+        "total": 3,
+        "abstained": 0,
+        "answered": 3
+      },
+      "declared_baseline": {
+        "correct": 3,
+        "total": 3,
+        "abstained": 0,
+        "answered": 3
+      }
+    },
+    "cases": [
+      {
+        "case_id": "validation-1",
+        "prediction": "right",
+        "consensus_before": "right",
+        "consensus_after": "right",
+        "direct_meta": "right",
+        "majority": "left",
+        "declared_baseline": "right",
+        "actual": "right",
+        "label_source": "Creator\u2019s published final ordering, transcribed by coding assistant; not independently human-verified"
+      },
+      {
+        "case_id": "validation-2",
+        "prediction": "left",
+        "consensus_before": null,
+        "consensus_after": "left",
+        "direct_meta": "right",
+        "majority": "left",
+        "declared_baseline": "left",
+        "actual": "left",
+        "label_source": "Creator\u2019s published final ordering, transcribed by coding assistant; not independently human-verified"
+      },
+      {
+        "case_id": "validation-3",
+        "prediction": "right",
+        "consensus_before": null,
+        "consensus_after": null,
+        "direct_meta": "right",
+        "majority": "left",
+        "declared_baseline": "right",
+        "actual": "right",
+        "label_source": "Creator\u2019s published final ordering, transcribed by coding assistant; not independently human-verified"
+      }
+    ],
+    "consistent_before": 4,
+    "consistent_after": 4,
+    "questions_answered": 1,
+    "limitations": "This is a local pilot with attributed labels, not independently verified ground truth. Expert approval is self-attested. Agreement, coverage and baseline comparisons do not establish business ROI, compliance or performance on a different operator, site or task."
+  },
+  "business": {
+    "before_minutes": null,
+    "after_minutes": null,
+    "notes": ""
+  }
+}

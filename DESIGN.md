@@ -76,3 +76,6 @@ and expert answers survive refreshes; export remains available as a backup.
 - Do keep navigation scrolling local on narrow screens.
 - Don't fabricate telemetry, thumbnails, analysis progress or accuracy.
 - Don't substitute invented imagery for missing source video.
+
+## Training guide workspace
+The primary view presents four stages: prepare cases, ask the expert, review and freeze, and validate. White document surfaces, Helvetica and the existing orange accent remain unchanged. Case inputs use meaningful feature labels rather than requiring JSON editing. Rule cards show competing explanations, rejected alternatives and their counterexample IDs. The selected disagreement case leads to an attributed answer form. Review distinguishes demonstration-only status from reviewer self-attestation. Validation labels stay locked until a server snapshot exists; predictions stay visually hidden until scoring, and first scored labels cannot be silently changed. Baselines and abstentions remain beside the main score. Business-time measurements are separate, optional and initially empty.
