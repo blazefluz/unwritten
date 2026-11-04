@@ -14,6 +14,7 @@ import {
   ArrowUp,
   ArrowUpRight,
   Box,
+  Camera,
   Check,
   ChevronDown,
   CircleHelp,
@@ -21,6 +22,7 @@ import {
   Eye,
   Grid2X2,
   Layers3,
+  ShoppingBasket,
   LoaderCircle,
   Maximize2,
   Moon,
@@ -49,9 +51,12 @@ import {
   makeObject,
   marketWorld,
   MARKET_REASONS,
+  normalizeProposal,
+  photoProposalSchema,
   proposalSchema,
   repairPlacement,
   sceneSchema,
+  sizeOf,
   type Kind,
   type Proposal,
   type SceneObject,
@@ -64,6 +69,8 @@ import {
   type DayResult,
 } from "@/lib/studio/shoppers";
 import SceneSwitch from "./scene-switch";
+import { SAMPLE_STORE_REASONS, sampleStore } from "@/lib/studio/store-sample";
+import { photoToDataUrl } from "@/lib/studio/photo";
 const Viewport = dynamic(() => import("./viewport"), {
   ssr: false,
   loading: () => (
@@ -77,6 +84,10 @@ type Message = {
   role: "user" | "assistant" | "system";
   text: string;
   source?: string;
+  /** A photo the user sent, shown as a thumbnail. */
+  image?: string;
+  /** What Muse says it saw in a photo. */
+  observed?: string[];
 };
 type Pending = {
   world: World;
@@ -96,6 +107,13 @@ function scriptedMarket(): [World, string, Record<string, string>] {
     Object.fromEntries(
       world.objects.map((o) => [o.id, MARKET_REASONS[o.label]]),
     ),
+  ];
+}
+function scriptedStore(): [World, string, Record<string, string>] {
+  return [
+    sampleStore(),
+    "Loaded the scripted corner-grocery sample: its items, prices, stock and narration are scripted examples, not AI. Open the shop to run the simulation. Undo is available.",
+    SAMPLE_STORE_REASONS,
   ];
 }
 const initialMessage: Message = {
@@ -144,7 +162,8 @@ export default function WorldStudio() {
     [panel, setPanel] = useState<"objects" | "chat">("chat");
   const log = useRef<HTMLDivElement>(null),
     input = useRef<HTMLTextAreaElement>(null),
-    upload = useRef<HTMLInputElement>(null);
+    upload = useRef<HTMLInputElement>(null),
+    photo = useRef<HTMLInputElement>(null);
   const request = useRef<AbortController | null>(null),
     revision = useRef(0),
     currentWorld = useRef(world);
@@ -194,7 +213,7 @@ export default function WorldStudio() {
   });
   function improveFromDay(result: DayResult) {
     if (busy || pending || request.current) return;
-    const text = `Shoppers just tested this market (simulated in code). ${describeDay(result)} Rearrange the layout so every shopper can reach the merchandise and pay at the counter. Keep the existing objects where possible.`;
+    const text = `Shoppers just tested this market (simulated in code). ${describeDay(result)} Rearrange the layout so every shopper can reach the merchandise and pay at the counter. Keep the existing objects where possible.${result.stats.catalog ? " You may also restock or reprice products, or move them to better fixtures, by returning the complete products list; explain any price or stock change." : ""}`;
     closeShop();
     if (mode === "meta" && ready) {
       setBaseline({ stats: result.stats, seed: daySeed.current });
@@ -280,8 +299,14 @@ export default function WorldStudio() {
     if (selectedId && !next.objects.some((o) => o.id === selectedId))
       setSelected(null);
   }
-  function propose(proposal: Proposal, source: string, animate = true) {
-    const next = applyProposal(currentWorld.current, proposal);
+  function propose(
+    proposal: Proposal,
+    source: string,
+    animate = true,
+    base: World = currentWorld.current,
+    extra: Pick<Message, "observed"> = {},
+  ) {
+    const next = applyProposal(base, proposal);
     const changed = proposal.actions.flatMap((a) =>
       a.type === "add" || a.type === "update" ? [a.object.id] : [],
     );
@@ -306,11 +331,11 @@ export default function WorldStudio() {
       });
       return;
     }
-    if (proposal.actions.length) {
+    if (proposal.actions.length || next.products !== base.products) {
       commit(next, undefined, animate, spoken);
       if (changed.length) setSelected(changed[changed.length - 1]);
     }
-    addMessage({ role: "assistant", text: proposal.message, source });
+    addMessage({ role: "assistant", text: proposal.message, source, ...extra });
   }
   function manual(object: SceneObject) {
     try {
@@ -446,6 +471,103 @@ export default function WorldStudio() {
       setBusy(false);
       request.current = null;
     }
+  }
+  async function buildFromPhoto(file?: File) {
+    if (!file || busy || pending || request.current) return;
+    if (mode !== "meta" || !ready) {
+      setError(
+        "Building from a photo needs Meta AI. Add MODEL_API_KEY in web/.env.local, restart the server and choose Meta under Editing with.",
+      );
+      return;
+    }
+    let image: string;
+    try {
+      image = await photoToDataUrl(file);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "This photo could not be read.",
+      );
+      return;
+    }
+    const note = prompt.trim();
+    setPrompt("");
+    setError("");
+    addMessage({
+      role: "user",
+      text: note || "Build this shop.",
+      image,
+    });
+    closeShop();
+    const controller = new AbortController();
+    request.current = controller;
+    const atRevision = revision.current;
+    setBusy(true);
+    const timer = setTimeout(() => controller.abort(), 290000);
+    try {
+      const response = await fetch("/api/studio/photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image, note }),
+        signal: controller.signal,
+      });
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Muse could not read this photo.");
+      if (revision.current !== atRevision)
+        throw new Error(
+          "The scene changed while Muse was reading the photo. Send the photo again.",
+        );
+      const store = photoProposalSchema.parse(normalizeProposal(data));
+      propose(
+        store,
+        "Meta · Muse Spark vision",
+        true,
+        { ...EMPTY_WORLD, name: store.name },
+        { observed: store.observed },
+      );
+    } catch (e) {
+      setPrompt(note);
+      setError(
+        controller.signal.aborted
+          ? "Stopped reading the photo. Your scene is unchanged."
+          : e instanceof Error && e.name !== "ZodError"
+            ? e.message
+            : "Muse's store did not pass validation. Nothing was changed; try the photo again.",
+      );
+    } finally {
+      clearTimeout(timer);
+      setBusy(false);
+      request.current = null;
+      if (photo.current) photo.current.value = "";
+    }
+  }
+  function placeDesign(designId: string) {
+    const design = world.designs?.find((d) => d.id === designId);
+    if (!design || busy || pending) return;
+    if (world.objects.length >= 40) {
+      setError("This prototype supports up to 40 objects.");
+      return;
+    }
+    const object = findSpace(world, {
+      ...makeObject(design.kind),
+      id: `${design.id}-${crypto.randomUUID().slice(0, 6)}`,
+      label: design.name,
+      color: design.parts[0].color,
+      designId: design.id,
+      size: design.size,
+      parts: design.parts,
+    });
+    if (!object) {
+      setError("No clear floor space was found for another one.");
+      return;
+    }
+    propose(
+      {
+        message: `Placed another ${design.name.toLowerCase()}.`,
+        actions: [{ type: "add", object }],
+      },
+      "Local catalog",
+    );
   }
   function undo() {
     if (!history.length || busy) return;
@@ -673,6 +795,26 @@ export default function WorldStudio() {
               <Plus size={15} />
               Empty room
             </button>
+            <button disabled={locked} onClick={() => load(...scriptedStore())}>
+              <ShoppingBasket size={15} />
+              Corner grocery (sample)
+              <ArrowUpRight size={14} />
+            </button>
+            <button
+              disabled={locked}
+              onClick={() => photo.current?.click()}
+              title="Muse reads a photo of a real shop and rebuilds it, with new items and a product catalog"
+            >
+              <Camera size={15} />
+              Build from a photo
+            </button>
+            <input
+              ref={photo}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              onChange={(e) => void buildFromPhoto(e.target.files?.[0])}
+            />
           </div>
           <section className="ws-object-section">
             <div className="ws-section-heading">
@@ -716,6 +858,67 @@ export default function WorldStudio() {
               </div>
             )}
           </section>
+          {Boolean(world.products?.length) && (
+            <section className="ws-store-catalog">
+              <div className="ws-section-heading">
+                <h3>Store catalog</h3>
+                <ShoppingBasket size={14} />
+              </div>
+              <ul>
+                {world.products!.map((p) => (
+                  <li key={p.id}>
+                    <span
+                      className="ws-object-swatch"
+                      style={{ background: p.color }}
+                    />
+                    <span>
+                      <strong>{p.name}</strong>
+                      <small>
+                        {world.objects.find((o) => o.id === p.fixtureId)
+                          ?.label || "Not displayed"}
+                      </small>
+                    </span>
+                    <span className="ws-price">
+                      {p.price.toFixed(2)}
+                      <small>{p.stock} in stock</small>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {Boolean(world.designs?.length) && (
+            <section className="ws-store-catalog">
+              <div className="ws-section-heading">
+                <h3>Muse-made items</h3>
+                <Sparkles size={14} />
+              </div>
+              <ul>
+                {world.designs!.map((d) => (
+                  <li key={d.id} className="ws-design-item">
+                    <button
+                      disabled={locked}
+                      onClick={() => placeDesign(d.id)}
+                      title={`${d.description} · click to place another`}
+                    >
+                      <span
+                        className="ws-object-swatch"
+                        style={{ background: d.parts[0].color }}
+                      >
+                        <Plus size={13} />
+                      </span>
+                      <span>
+                        <strong>{d.name}</strong>
+                        <small>
+                          {d.size.map((n) => n.toFixed(1)).join(" × ")} m
+                        </small>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <section className="ws-catalog">
             <div className="ws-section-heading">
               <h3>Add to your space</h3>
@@ -968,8 +1171,27 @@ export default function WorldStudio() {
                 <p className="ws-day-compare">
                   After Muse’s changes, with the same shoppers: sales{" "}
                   {baseline.stats.bought} → {day.stats.bought}, gave up{" "}
-                  {baseline.stats.gaveUp} → {day.stats.gaveUp}.
+                  {baseline.stats.gaveUp} → {day.stats.gaveUp}
+                  {day.stats.catalog &&
+                    `, revenue ${baseline.stats.revenue.toFixed(2)} → ${day.stats.revenue.toFixed(2)}`}
+                  .
                 </p>
+              )}
+              {day.stats.catalog && (
+                <div className="ws-day-sales">
+                  <div>
+                    <span>Revenue</span>
+                    <strong>{day.stats.revenue.toFixed(2)}</strong>
+                  </div>
+                  <div>
+                    <span>Items sold</span>
+                    <strong>{day.stats.unitsSold}</strong>
+                  </div>
+                  <div>
+                    <span>Sold out</span>
+                    <strong>{day.stats.soldOut.length}</strong>
+                  </div>
+                </div>
               )}
               <dl>
                 {(
@@ -1021,9 +1243,9 @@ export default function WorldStudio() {
                 </button>
               </div>
               <div className="ws-inspector-dimensions">
-                {(CATALOG[selected.kind].size[0] * selected.scale).toFixed(2)} ×{" "}
-                {(CATALOG[selected.kind].size[2] * selected.scale).toFixed(2)} m
-                footprint <span>· {selected.rotation}°</span>
+                {(sizeOf(selected)[0] * selected.scale).toFixed(2)} ×{" "}
+                {(sizeOf(selected)[2] * selected.scale).toFixed(2)} m footprint{" "}
+                <span>· {selected.rotation}°</span>
               </div>
               <div className="ws-inspector-controls">
                 <div className="ws-nudge">
@@ -1176,7 +1398,24 @@ export default function WorldStudio() {
                     Muse
                   </span>
                 )}
+                {m.image && (
+                  <img
+                    className="ws-message-photo"
+                    src={m.image}
+                    alt="Shop photo sent to Muse"
+                  />
+                )}
                 <p>{m.text}</p>
+                {m.observed && m.observed.length > 0 && (
+                  <div className="ws-observed">
+                    <span>What Muse saw</span>
+                    <ul>
+                      {m.observed.map((o, k) => (
+                        <li key={k}>{o}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {m.source && (
                   <span className="ws-message-source">{m.source}</span>
                 )}

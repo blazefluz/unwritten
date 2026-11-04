@@ -29,6 +29,17 @@ export type ShopperPlan = {
   pickedAt: number | null;
   outcome: "bought" | "browsed" | "no-checkout" | "gave-up";
   blocked: string[];
+  /** Products paid for (store-catalog mode only). */
+  items: string[];
+};
+export type ProductSales = {
+  id: string;
+  name: string;
+  units: number;
+  revenue: number;
+  stockLeft: number;
+  /** Shoppers who wanted it after it sold out. */
+  missed: number;
 };
 export type DayResult = {
   shoppers: ShopperPlan[];
@@ -46,6 +57,12 @@ export type DayResult = {
     hasCounter: boolean;
     merchandise: number;
     entranceBlocked: boolean;
+    /** Store-catalog mode: products, prices and stock from the scene. */
+    catalog: boolean;
+    revenue: number;
+    unitsSold: number;
+    sales: ProductSales[];
+    soldOut: string[];
   };
 };
 
@@ -248,7 +265,27 @@ export function simulateDay(world: World, count = 12, seed = 7): DayResult {
   const random = seeded(seed);
   const free = walkableGrid(world);
   const fromEntrance = distanceField(cellAt(ENTRANCE.x, ENTRANCE.z), free).dist;
-  const merchandise = world.objects.filter((o) => MERCHANDISE.has(o.kind));
+  const products = (world.products || []).filter((p) =>
+    world.objects.some((o) => o.id === p.fixtureId),
+  );
+  const catalog = products.length > 0;
+  const merchandise = catalog
+    ? world.objects.filter((o) => products.some((p) => p.fixtureId === o.id))
+    : world.objects.filter((o) => MERCHANDISE.has(o.kind));
+  const stock = new Map(products.map((p) => [p.id, p.stock]));
+  const sales = new Map<string, ProductSales>(
+    products.map((p) => [
+      p.id,
+      {
+        id: p.id,
+        name: p.name,
+        units: 0,
+        revenue: 0,
+        stockLeft: p.stock,
+        missed: 0,
+      },
+    ]),
+  );
   const counters = world.objects.filter((o) => o.kind === "counter");
   const access = new Map(
     world.objects.map((o) => [o.id, accessPoint(o, free, fromEntrance)]),
@@ -273,6 +310,7 @@ export function simulateDay(world: World, count = 12, seed = 7): DayResult {
       pickedAt: null,
       outcome: "gave-up",
       blocked: [],
+      items: [],
     };
     const walk = (to: { x: number; z: number }) => {
       const path = findPath(world, here, to, free);
@@ -291,6 +329,57 @@ export function simulateDay(world: World, count = 12, seed = 7): DayResult {
       keyframes.push({ t, ...here, note });
     };
 
+    if (catalog) {
+      // Each shopper comes for one to three specific products.
+      const list = [...products]
+        .sort(() => random() - 0.5)
+        .slice(0, 1 + Math.floor(random() * Math.min(3, products.length)));
+      const basket: typeof products = [];
+      let reached = 0;
+      for (const product of list) {
+        const o = merchandise.find((m) => m.id === product.fixtureId)!;
+        const at = access.get(o.id);
+        if (!at || !walk(at)) {
+          plan.blocked.push(o.label);
+          blocked.set(o.label, (blocked.get(o.label) || 0) + 1);
+          continue;
+        }
+        reached += 1;
+        visits.set(o.id, (visits.get(o.id) || 0) + 1);
+        if (!stock.get(product.id)) {
+          sales.get(product.id)!.missed += 1;
+          wait(1.2, `${product.name} sold out`);
+          continue;
+        }
+        stock.set(product.id, stock.get(product.id)! - 1);
+        basket.push(product);
+        wait(1.5 + random() * 1.5, `picking ${product.name}`);
+        if (plan.pickedAt === null) plan.pickedAt = t;
+      }
+      if (basket.length) {
+        if (checkout && walk(checkout.at!)) {
+          visits.set(checkout.o.id, (visits.get(checkout.o.id) || 0) + 1);
+          wait(2.5, "paying");
+          plan.paidAt = t;
+          plan.outcome = "bought";
+          for (const product of basket) {
+            const sale = sales.get(product.id)!;
+            sale.units += 1;
+            sale.revenue += product.price;
+            plan.items.push(product.name);
+          }
+        } else {
+          plan.outcome = "no-checkout";
+          // Unpaid items go back on the shelf.
+          for (const product of basket)
+            stock.set(product.id, stock.get(product.id)! + 1);
+        }
+      } else plan.outcome = reached ? "browsed" : "gave-up";
+      walk(ENTRANCE);
+      keyframes.push({ t: t + 0.01, ...here, note: "leaves" });
+      shoppers.push(plan);
+      continue;
+    }
     const wanted = [...merchandise]
       .sort(() => random() - 0.5)
       .slice(0, 1 + Math.floor(random() * Math.min(3, merchandise.length)));
@@ -349,9 +438,22 @@ export function simulateDay(world: World, count = 12, seed = 7): DayResult {
       hasCounter: counters.length > 0,
       merchandise: merchandise.length,
       entranceBlocked: !free[cellAt(ENTRANCE.x, ENTRANCE.z)],
+      catalog,
+      revenue: round2([...sales.values()].reduce((a, s) => a + s.revenue, 0)),
+      unitsSold: [...sales.values()].reduce((a, s) => a + s.units, 0),
+      sales: [...sales.values()]
+        .map((s) => ({
+          ...s,
+          revenue: round2(s.revenue),
+          stockLeft: stock.get(s.id) ?? 0,
+        }))
+        .sort((a, b) => b.revenue - a.revenue || b.units - a.units),
+      soldOut: products.filter((p) => stock.get(p.id) === 0).map((p) => p.name),
     },
   };
 }
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Where a shopper is at simulated time t, and what they're doing. */
 export function shopperAt(plan: ShopperPlan, t: number) {
@@ -375,7 +477,9 @@ export function shopperAt(plan: ShopperPlan, t: number) {
 export function describeDay(result: DayResult): string {
   const s = result.stats;
   if (!s.merchandise)
-    return "Nobody could buy anything: there are no shelves, crates or tables to sell from.";
+    return s.catalog
+      ? "Nobody could buy anything: no product is stocked on a fixture in the store."
+      : "Nobody could buy anything: there are no shelves, crates or tables to sell from.";
   const parts = [
     `${s.visitors} shoppers visited; ${s.bought} bought something.`,
   ];
@@ -394,6 +498,24 @@ export function describeDay(result: DayResult): string {
     );
   if (s.neverVisited.length)
     parts.push(`Nobody reached: ${s.neverVisited.join(", ")}.`);
+  if (s.catalog) {
+    parts.push(`Revenue ${s.revenue.toFixed(2)} from ${s.unitsSold} items.`);
+    const top = s.sales.filter((x) => x.units).slice(0, 3);
+    if (top.length)
+      parts.push(
+        `Most revenue: ${top.map((x) => `${x.name} (${x.units} sold, ${x.revenue.toFixed(2)})`).join(", ")}.`,
+      );
+    const unsold = s.sales.filter((x) => !x.units && !x.missed);
+    if (unsold.length)
+      parts.push(`Never sold: ${unsold.map((x) => x.name).join(", ")}.`);
+    const quietSellOut = s.sales.filter((x) => !x.stockLeft && !x.missed);
+    if (quietSellOut.length)
+      parts.push(`Sold out: ${quietSellOut.map((x) => x.name).join(", ")}.`);
+    for (const x of s.sales.filter((x) => x.missed).slice(0, 3))
+      parts.push(
+        `${x.name} sold out; ${x.missed} more ${x.missed === 1 ? "shopper" : "shoppers"} wanted it.`,
+      );
+  }
   parts.push(`Average walk ${s.averageWalk.toFixed(1)} m.`);
   return parts.join(" ");
 }

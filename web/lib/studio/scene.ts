@@ -84,6 +84,51 @@ export const CATALOG: Record<
     description: "Define a zone on the floor",
   },
 };
+const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+const vec3 = (min: number, max: number) =>
+  z.tuple([
+    z.number().finite().min(min).max(max),
+    z.number().finite().min(min).max(max),
+    z.number().finite().min(min).max(max),
+  ]);
+/** One primitive of a Muse-made item, in metres, relative to the item's floor centre. */
+export const partSchema = z.object({
+  shape: z.enum(["box", "cylinder", "sphere"]),
+  /** box: width, height, depth. cylinder: diameter, height, diameter. sphere: diameter ×3. */
+  size: vec3(0.01, 4),
+  /** Centre of the part. y is height of the centre above the floor. */
+  offset: vec3(-2.5, 3.5),
+  color: hex,
+});
+export type Part = z.infer<typeof partSchema>;
+/**
+ * A store item Muse designs when the catalog has nothing like it (a fridge,
+ * a produce stand, a checkout lane). `kind` is the catalog behaviour it takes
+ * on in the simulation: shelf/crate/table are merchandise, counter is checkout.
+ */
+export const designSchema = z.object({
+  id: z.string().regex(/^[a-zA-Z0-9_-]{1,60}$/),
+  name: z.string().trim().min(1).max(60),
+  kind: z.enum(kinds),
+  size: z.tuple([
+    z.number().finite().min(0.2).max(5),
+    z.number().finite().min(0.02).max(3),
+    z.number().finite().min(0.2).max(5),
+  ]),
+  parts: z.array(partSchema).min(1).max(12),
+  description: z.string().trim().max(160).default(""),
+});
+export type Design = z.infer<typeof designSchema>;
+/** Something the store sells, stocked on one fixture in the scene. */
+export const productSchema = z.object({
+  id: z.string().regex(/^[a-zA-Z0-9_-]{1,60}$/),
+  name: z.string().trim().min(1).max(60),
+  price: z.number().finite().min(0).max(100000),
+  stock: z.number().int().min(0).max(999),
+  fixtureId: z.string().max(60),
+  color: hex,
+});
+export type Product = z.infer<typeof productSchema>;
 export const objectSchema = z.object({
   id: z.string().regex(/^[a-zA-Z0-9_-]{1,60}$/),
   kind: z.enum(kinds),
@@ -98,6 +143,11 @@ export const objectSchema = z.object({
   ]),
   scale: z.number().finite().min(0.5).max(2),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  /** Set when the object is an instance of a Muse-made design. */
+  designId: z.string().max(60).optional(),
+  /** Resolved from the design: unscaled size and primitives. */
+  size: designSchema.shape.size.optional(),
+  parts: z.array(partSchema).max(12).optional(),
 });
 export type SceneObject = z.infer<typeof objectSchema>;
 export const sceneSchema = z
@@ -106,10 +156,24 @@ export const sceneSchema = z
     name: z.string().min(1).max(100),
     lighting: z.enum(["day", "night"]),
     objects: z.array(objectSchema).max(40),
+    designs: z.array(designSchema).max(16).optional(),
+    products: z.array(productSchema).max(40).optional(),
   })
   .superRefine((scene, ctx) => {
     if (new Set(scene.objects.map((o) => o.id)).size !== scene.objects.length)
       ctx.addIssue({ code: "custom", message: "Object IDs must be unique." });
+    const designs = new Set((scene.designs || []).map((d) => d.id));
+    if (designs.size !== (scene.designs || []).length)
+      ctx.addIssue({ code: "custom", message: "Design IDs must be unique." });
+    for (const o of scene.objects)
+      if (o.designId && !designs.has(o.designId))
+        ctx.addIssue({
+          code: "custom",
+          message: `${o.label} uses a design that does not exist.`,
+        });
+    const products = scene.products || [];
+    if (new Set(products.map((p) => p.id)).size !== products.length)
+      ctx.addIssue({ code: "custom", message: "Product IDs must be unique." });
   });
 export type World = z.infer<typeof sceneSchema>;
 // Optional one-line rationale the avatar says aloud while it builds.
@@ -135,8 +199,18 @@ export const actionSchema = z.discriminatedUnion("type", [
 export const proposalSchema = z.object({
   message: z.string().min(1).max(1500),
   actions: z.array(actionSchema).max(40),
+  /** New or revised Muse-made items; instances reference them by designId. */
+  designs: z.array(designSchema).max(16).optional(),
+  /** The complete product catalog when Muse changes it; omitted means unchanged. */
+  products: z.array(productSchema).max(40).nullable().optional(),
 });
 export type Proposal = z.infer<typeof proposalSchema>;
+/** A store Muse rebuilt from a photo, with what it says it saw. */
+export const photoProposalSchema = proposalSchema.extend({
+  name: z.string().trim().min(1).max(100),
+  observed: z.array(z.string().trim().max(240)).max(12),
+});
+export type PhotoProposal = z.infer<typeof photoProposalSchema>;
 export type Issue = { ids: string[]; message: string };
 export function makeObject(kind: Kind, x = 0, z = 0): SceneObject {
   return {
@@ -150,8 +224,12 @@ export function makeObject(kind: Kind, x = 0, z = 0): SceneObject {
     color: CATALOG[kind].color,
   };
 }
+/** Unscaled [width, height, depth]: the design's size, or the catalog's. */
+export function sizeOf(o: SceneObject): [number, number, number] {
+  return o.size || CATALOG[o.kind].size;
+}
 export function footprint(o: SceneObject) {
-  const [w, , d] = CATALOG[o.kind].size;
+  const [w, , d] = sizeOf(o);
   return {
     w: (o.rotation % 180 ? d : w) * o.scale,
     d: (o.rotation % 180 ? w : d) * o.scale,
@@ -185,8 +263,27 @@ export function inspectScene(world: World): Issue[] {
   }
   return issues;
 }
+/** Copy a design's size and parts onto an object that references it. */
+export function resolveDesign(o: SceneObject, designs: Design[] = []) {
+  if (!o.designId) {
+    const { size: _size, parts: _parts, designId: _id, ...plain } = o;
+    return plain;
+  }
+  const design = designs.find((d) => d.id === o.designId);
+  if (!design) throw new Error(`${o.label} uses a design that does not exist.`);
+  return { ...o, size: design.size, parts: design.parts };
+}
 export function applyProposal(world: World, proposal: Proposal): World {
   const next: World = structuredClone(world);
+  if (proposal.designs?.length) {
+    const designs = [...(next.designs || [])];
+    for (const d of proposal.designs) {
+      const i = designs.findIndex((x) => x.id === d.id);
+      if (i < 0) designs.push(d);
+      else designs[i] = d;
+    }
+    next.designs = designs;
+  }
   for (const action of proposal.actions) {
     if (action.type === "lighting") next.lighting = action.value;
     else if (action.type === "remove") {
@@ -203,6 +300,13 @@ export function applyProposal(world: World, proposal: Proposal): World {
       next.objects[index] = action.object;
     }
   }
+  next.objects = next.objects.map((o) => resolveDesign(o, next.designs));
+  if (proposal.products) next.products = proposal.products;
+  // Products on a fixture that no longer exists have nowhere to be sold.
+  if (next.products)
+    next.products = next.products.filter((p) =>
+      next.objects.some((o) => o.id === p.fixtureId),
+    );
   return sceneSchema.parse(next);
 }
 export function findSpace(
@@ -397,4 +501,62 @@ export function localCommand(
     message: `Updated ${object.label} using local controls.`,
     actions: [{ type: "update", object }],
   };
+}
+
+const clamp = (v: unknown, min: number, max: number) =>
+  typeof v === "number" && Number.isFinite(v)
+    ? Math.min(max, Math.max(min, v))
+    : v;
+const clamp3 = (v: unknown, min: number, max: number) =>
+  Array.isArray(v) ? v.map((n) => clamp(n, min, max)) : v;
+/**
+ * Bring a model proposal's design and product numbers into range before
+ * validation, so a fridge 3.02 m tall is clamped rather than rejecting the
+ * whole store. Structure, ids and references are still validated strictly.
+ */
+export function normalizeProposal(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const out = structuredClone(raw) as Record<string, unknown>;
+  if (Array.isArray(out.actions))
+    for (const a of out.actions as Record<string, unknown>[]) {
+      const o = a?.object as Record<string, unknown> | undefined;
+      if (!o) continue;
+      if (o.designId === null || o.designId === "") delete o.designId;
+      o.x = clamp(o.x, -6, 6);
+      o.z = clamp(o.z, -5, 5);
+      o.scale = clamp(o.scale, 0.5, 2);
+    }
+  if (Array.isArray(out.designs))
+    out.designs = (out.designs as Record<string, unknown>[]).map((d) => {
+      const size = d.size as number[] | undefined;
+      return {
+        ...d,
+        size: Array.isArray(size)
+          ? [
+              clamp(size[0], 0.2, 5),
+              clamp(size[1], 0.02, 3),
+              clamp(size[2], 0.2, 5),
+            ]
+          : size,
+        parts: Array.isArray(d.parts)
+          ? (d.parts as Record<string, unknown>[]).slice(0, 12).map((part) => ({
+              ...part,
+              size: clamp3(part.size, 0.01, 4),
+              offset: clamp3(part.offset, -2.5, 3.5),
+            }))
+          : d.parts,
+      };
+    });
+  if (Array.isArray(out.products))
+    out.products = (out.products as Record<string, unknown>[])
+      .slice(0, 40)
+      .map((p) => ({
+        ...p,
+        price: clamp(p.price, 0, 100000),
+        stock:
+          typeof p.stock === "number"
+            ? Math.round(clamp(p.stock, 0, 999) as number)
+            : p.stock,
+      }));
+  return out;
 }

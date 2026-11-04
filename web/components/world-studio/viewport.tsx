@@ -126,7 +126,24 @@ function createObject(o: SceneObject, ghost = false): THREE.Group {
   const pale = material("#e8e5dc");
   root.userData.ownedMaterials = [paint, wood, dark, pale];
   const [w, h, d] = CATALOG[o.kind].size;
-  if (o.kind === "table" || o.kind === "counter") {
+  if (o.parts?.length) {
+    // A Muse-made design: its own primitives, in the object's colour family.
+    const owned = root.userData.ownedMaterials as THREE.Material[];
+    for (const part of o.parts) {
+      const mat = material(part.color);
+      owned.push(mat);
+      const [px, py, pz] = part.size;
+      const at = part.offset;
+      if (part.shape === "box") box(root, [px, py, pz], at, mat);
+      else if (part.shape === "cylinder") {
+        const mesh = cylinder(root, px / 2, px / 2, py, at, mat);
+        mesh.scale.z = pz / px;
+      } else {
+        const mesh = sphere(root, px / 2, at, mat);
+        mesh.scale.set(1, py / px, pz / px);
+      }
+    }
+  } else if (o.kind === "table" || o.kind === "counter") {
     box(root, [w, 0.12, d], [0, h - 0.06, 0], o.kind === "table" ? wood : pale);
     if (o.kind === "counter") {
       box(root, [w - 0.12, h - 0.15, d - 0.12], [0, (h - 0.15) / 2, 0], paint);

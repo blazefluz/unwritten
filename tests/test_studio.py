@@ -36,3 +36,36 @@ def test_every_scene_action_requires_a_spoken_reason():
         assert "reason" in action["required"]
     lighting = next(a for a in actions if a["properties"]["type"]["enum"] == ["lighting"])
     assert "reason" not in lighting["properties"]
+
+
+def test_photo_store_sends_the_photo_as_an_image_and_asks_for_designs_and_products():
+    from unwritten.studio import PHOTO_SCHEMA, propose_photo
+    seen = {}
+    class FakeClient:
+        def ask_json(self, prompt, schema, name, video=None, image=None):
+            seen.update(name=name, schema=schema, image=image, prompt=prompt)
+            return {"message": "Built", "name": "Shop", "observed": [], "actions": [],
+                    "designs": [], "products": None}
+    propose_photo(FakeClient(), {"catalog": {}, "image": "data:image/jpeg;base64,AAAA", "note": "corner shop"})
+    assert seen["name"] == "world_studio_photo_store"
+    assert seen["schema"] is PHOTO_SCHEMA
+    assert seen["image"] == "data:image/jpeg;base64,AAAA"
+    assert '"note": "corner shop"' in seen["prompt"]
+    assert "Do not claim real sales" in seen["prompt"]
+    for key in ("observed", "designs", "products", "actions"):
+        assert key in PHOTO_SCHEMA["required"]
+
+
+def test_meta_client_attaches_images_as_input_image_parts():
+    from unwritten.client import MetaClient
+    calls = {}
+    class Responses:
+        def create(self, **kwargs):
+            calls.update(kwargs)
+            return type("R", (), {"output_text": '{"ok": true}'})()
+    client = MetaClient.__new__(MetaClient)
+    client.model, client.reasoning_effort, client.max_output_tokens = "m", "low", 10
+    client._client = type("C", (), {"responses": Responses()})()
+    assert client.ask_json("look", {}, "n", image="data:image/png;base64,AA") == {"ok": True}
+    content = calls["input"][0]["content"]
+    assert content[1] == {"type": "input_image", "image_url": "data:image/png;base64,AA"}

@@ -30,6 +30,7 @@ class ModelClient(Protocol):
         schema: dict[str, Any],
         name: str,
         video: str | None = None,
+        image: str | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -95,8 +96,12 @@ class MetaClient:
         schema: dict[str, Any],
         name: str,
         video: str | None = None,
+        image: str | None = None,
     ) -> dict[str, Any]:
         content: list[dict[str, Any]] = [{"type": "input_text", "text": prompt}]
+        if image:
+            # A public URL or a base64 data: URL (dev.meta.ai/docs/image-understanding).
+            content.append({"type": "input_image", "image_url": image})
         if video:
             if video.startswith(("http://", "https://")):
                 content.append({"type": "input_video", "video_url": video})

@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { isLocalRequest } from "@/lib/local-request";
 import { runPython } from "@/lib/python";
-import { CATALOG, proposalSchema, sceneSchema } from "@/lib/studio/scene";
+import {
+  CATALOG,
+  normalizeProposal,
+  proposalSchema,
+  sceneSchema,
+} from "@/lib/studio/scene";
 export const runtime = "nodejs";
 export const maxDuration = 240;
 export const dynamic = "force-dynamic";
@@ -35,7 +40,7 @@ export async function POST(request: Request) {
     );
   try {
     const raw = await request.text();
-    if (raw.length > 100_000)
+    if (raw.length > 400_000)
       return Response.json(
         { error: "This scene request is too large." },
         { status: 413 },
@@ -86,7 +91,7 @@ export async function POST(request: Request) {
         messages[failure.data.bridge_error] || messages.request_failed;
       return Response.json({ error }, { status });
     }
-    return Response.json(proposalSchema.parse(output));
+    return Response.json(proposalSchema.parse(normalizeProposal(output)));
   } catch (error) {
     if (error instanceof z.ZodError)
       return Response.json(

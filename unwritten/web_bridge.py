@@ -13,9 +13,11 @@ def run(request):
     if request.get("operation") == "studio_car":
         from .studio import propose_car
         return propose_car(MetaClient(max_output_tokens=16000, timeout=90, max_retries=0), request)
-    if request.get("operation") == "studio":
-        from .studio import propose
+    if request.get("operation") in ("studio", "studio_photo"):
+        from .studio import propose, propose_photo
         try:
+            if request["operation"] == "studio_photo":
+                return propose_photo(MetaClient(max_output_tokens=24000, timeout=180, max_retries=0), request)
             return propose(MetaClient(max_output_tokens=16000, timeout=90, max_retries=0), request)
         except Exception as exc:
             # Return a bounded category, never provider text, credentials or request data.
