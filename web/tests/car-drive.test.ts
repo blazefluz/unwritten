@@ -6,6 +6,7 @@ import {
   TRIP_KM,
   batteryAt,
   describeDrive,
+  sizeForTrip,
   testDrive,
 } from "../lib/studio/test-drive";
 
@@ -72,4 +73,16 @@ test("assembly narration follows the design's own numbers", () => {
       (s) => s.key === "body",
     ),
   );
+});
+
+test("sizing for the test drive returns the lightest layout that completes it", () => {
+  const car = CAR_PRESETS.coupe;
+  const pick = sizeForTrip(car);
+  assert.ok(pick);
+  assert.equal(pick.drive.arrived, true);
+  const lighter = {
+    ...car,
+    ev: { ...pick.ev, moduleCount: pick.ev.moduleCount - 1 },
+  };
+  assert.equal(testDrive(lighter).arrived, false);
 });

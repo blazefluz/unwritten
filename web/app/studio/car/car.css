@@ -830,3 +830,18 @@
 .ws-app .ev-candidate button:hover:not(:disabled) {
   background: #2a421d;
 }
+.ev-sizing .ev-secondary {
+  width: 100%;
+  margin-top: 8px;
+}
+.ev-candidate p + p {
+  margin-top: 6px;
+}
+.ev-applied {
+  margin-top: 10px;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: #2f6b45;
+  background: #eaf4ec;
+  border-radius: 4px;
+}

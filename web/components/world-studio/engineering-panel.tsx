@@ -12,8 +12,13 @@ import {
 } from "lucide-react";
 import { analyzeEV, solveBattery, type EVConfig } from "@/lib/studio/ev";
 import type { CarConfig, CarDocument } from "@/lib/studio/car";
+import { sizeForTrip, testDrive, TRIP_KM } from "@/lib/studio/test-drive";
 export type EngineeringTab =
-  "body" | "powertrain" | "analysis" | "parts" | "world";
+  | "body"
+  | "powertrain"
+  | "analysis"
+  | "parts"
+  | "world";
 type Props = {
   tab: EngineeringTab;
   car: CarConfig | null;
@@ -174,8 +179,10 @@ function downloadReport(car: CarConfig) {
 }
 export default function EngineeringPanel(p: Props) {
   const [candidate, setCandidate] = useState<
-    ReturnType<typeof solveBattery> | undefined
+    ReturnType<typeof solveBattery> | null | undefined
   >();
+  const [goal, setGoal] = useState<"range" | "trip">("range");
+  const [applied, setApplied] = useState<string | null>(null);
   useEffect(() => setCandidate(undefined), [p.car]);
   if (p.tab === "body") return null;
   if (p.tab === "world")
@@ -448,9 +455,24 @@ export default function EngineeringPanel(p: Props) {
         <button
           disabled={p.busy}
           className="ev-primary"
-          onClick={() => setCandidate(solveBattery(car))}
+          onClick={() => {
+            setGoal("range");
+            setApplied(null);
+            setCandidate(solveBattery(car));
+          }}
         >
           Run sizing study
+        </button>
+        <button
+          disabled={p.busy}
+          className="ev-secondary"
+          onClick={() => {
+            setGoal("trip");
+            setApplied(null);
+            setCandidate(sizeForTrip(car));
+          }}
+        >
+          Size for the {TRIP_KM} km test drive
         </button>
         {candidate !== undefined &&
           (candidate ? (
@@ -464,16 +486,40 @@ export default function EngineeringPanel(p: Props) {
                 {candidate.analysis.rangeKm.toFixed(0)} km estimated,{" "}
                 {candidate.analysis.massKg.toFixed(0)} kg assumed total mass.
               </p>
-              <button disabled={p.busy} onClick={() => p.onEv(candidate.ev)}>
+              <p>
+                Now: {car.ev.moduleCount} modules, {a.capacityKwh.toFixed(1)}{" "}
+                kWh. Test drive with this candidate:{" "}
+                {(() => {
+                  const d = testDrive({ ...car, ev: candidate.ev });
+                  return d.arrived
+                    ? `completes the ${TRIP_KM} km trip.`
+                    : `stops at ${Math.round(d.reachedKm)} of ${TRIP_KM} km.`;
+                })()}
+              </p>
+              <button
+                disabled={p.busy}
+                onClick={() => {
+                  setApplied(
+                    `Applied ${candidate.ev.moduleCount} modules (${candidate.analysis.capacityKwh.toFixed(1)} kWh), was ${car.ev.moduleCount}. Run Test drive to try it.`,
+                  );
+                  p.onEv(candidate.ev);
+                }}
+              >
                 Apply candidate
               </button>
             </div>
           ) : (
             <p role="status">
-              No candidate meets this target and the checks. Change the target
-              or assumptions; no design was changed.
+              {goal === "trip"
+                ? `No battery layout completes the ${TRIP_KM} km test drive with the other inputs fixed. Try a lower drag coefficient, a smaller body or a different drivetrain; no design was changed.`
+                : "No candidate meets this target and the checks. Change the target or assumptions; no design was changed."}
             </p>
           ))}
+        {applied && candidate === undefined && (
+          <p role="status" className="ev-applied">
+            {applied}
+          </p>
+        )}
       </div>
       <button className="ev-secondary" onClick={() => downloadReport(car)}>
         <Download size={14} />

@@ -187,3 +187,32 @@ export function describeDrive(result: DriveResult): string {
   );
   return parts.join(" ");
 }
+
+/**
+ * Battery sizing for the test trip: the same 63 module-count / column layouts
+ * as solveBattery, keeping every other input fixed, and returning the lightest
+ * one that completes the trip. Null if none does.
+ */
+export function sizeForTrip(car: CarConfig) {
+  let best: {
+    ev: CarConfig["ev"];
+    analysis: ReturnType<typeof analyzeEV>;
+    drive: DriveResult;
+  } | null = null;
+  for (let moduleCount = 4; moduleCount <= 24; moduleCount++)
+    for (const batteryColumns of [2, 3, 4] as const) {
+      const ev = { ...car.ev, moduleCount, batteryColumns };
+      const next = { ...car, ev };
+      const drive = testDrive(next);
+      if (!drive.arrived) continue;
+      const analysis = analyzeEV(next);
+      if (
+        !best ||
+        analysis.massKg < best.analysis.massKg ||
+        (analysis.massKg === best.analysis.massKg &&
+          analysis.pack.width < best.analysis.pack.width)
+      )
+        best = { ev, analysis, drive };
+    }
+  return best;
+}
