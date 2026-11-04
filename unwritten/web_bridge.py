@@ -18,7 +18,7 @@ def run(request):
         try:
             if request["operation"] == "studio_photo":
                 return propose_photo(MetaClient(max_output_tokens=24000, timeout=180, max_retries=0), request)
-            return propose(MetaClient(max_output_tokens=16000, timeout=90, max_retries=0), request)
+            return propose(MetaClient(max_output_tokens=16000, timeout=180, max_retries=0, reasoning_effort="medium"), request)
         except Exception as exc:
             # Return a bounded category, never provider text, credentials or request data.
             status = getattr(exc, "status_code", None)
