@@ -27,3 +27,12 @@ def test_car_proposals_use_meta_json_and_keep_dimensions_as_data():
             assert "Preserve every field" in prompt
             return {"message": "Please specify the width.", "car": None}
     assert propose_car(FakeClient(), {"car": None, "presets": {}, "prompt": "Make it wider"})["car"] is None
+
+
+def test_every_scene_action_requires_a_spoken_reason():
+    actions = SCHEMA["properties"]["actions"]["items"]["anyOf"]
+    for kind in ("add", "update", "remove"):
+        action = next(a for a in actions if a["properties"]["type"]["enum"] == [kind])
+        assert "reason" in action["required"]
+    lighting = next(a for a in actions if a["properties"]["type"]["enum"] == ["lighting"])
+    assert "reason" not in lighting["properties"]

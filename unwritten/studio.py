@@ -16,6 +16,9 @@ OBJECT = {
 }
 
 
+REASON = {"type": "string"}
+
+
 def action(kind, fields):
     properties = {"type": {"type": "string", "enum": [kind]}, **fields}
     return {"type": "object", "additionalProperties": False,
@@ -27,8 +30,9 @@ SCHEMA = {
     "properties": {
         "message": {"type": "string"},
         "actions": {"type": "array", "items": {"anyOf": [
-            action("add", {"object": OBJECT}), action("update", {"object": OBJECT}),
-            action("remove", {"id": {"type": "string"}}),
+            action("add", {"object": OBJECT, "reason": REASON}),
+            action("update", {"object": OBJECT, "reason": REASON}),
+            action("remove", {"id": {"type": "string"}, "reason": REASON}),
             action("lighting", {"value": {"type": "string", "enum": ["day", "night"]}}),
         ]}},
     },
@@ -54,6 +58,10 @@ The client independently checks floor footprints and will preview any overlaps b
 If a requested edit is impossible, explain why without inventing a completed action.
 Don't claim to have applied anything; the message describes your proposal. Keep messages under 100 words.
 Catalog sizes are [width,height,depth] in metres, before scale and rotation.
+Every add/update/remove has a 'reason': one sentence under 14 words, spoken aloud while you
+build, giving the spatial thinking behind that placement (flow, access, light, grouping,
+sightlines). Be specific to this layout; don't just restate the request or claim measurements.
+Order actions in a sensible build sequence: large anchoring pieces first, accents last.
 """
     prompt += "\nTask data:\n" + json.dumps({
         "catalog": request["catalog"], "scene": request["scene"],

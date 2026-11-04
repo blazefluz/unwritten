@@ -6,6 +6,15 @@ Entry for the **Meta Global AI Developer Hackathon**, **Indie Developer track**
 (judged on creativity, technical ambition, and whether it works).
 Theme: **Build for Your World** (warehouse returns sorting). Solo builder: Victor (GitHub: blazefluz).
 
+The user expanded the product to **any observed task**. Warehouse sorting and
+repair are examples, not exclusive domains. `python -m unwritten analyze` runs the
+general workflow in `unwritten/workflow.py`: observe actions, infer principles,
+review supplied reference excerpts, validate citations in code, revise, and ask
+the expert. Preserve the distinction between observations, hypotheses, model
+assessments and expert testimony. Exact citations establish provenance, not
+semantic truth, compliance or diagnostic accuracy. The original sorting CLI is
+still supported.
+
 Pipeline (see README.md):
 1. OBSERVE — Muse Spark watches an mp4 and logs every decision (time, item, attributes, outcome).
 2. HYPOTHESIZE — Muse Spark proposes the simplest ordered decision list.
@@ -47,6 +56,18 @@ Output: `<clip>.lab.html` notebook + `<clip>.lab.json`.
   client and synthetic fixture data.
 - Done: public GitHub repo `blazefluz/unwritten`.
 - NOT done: first real run against Muse Spark on a real video (go/no-go test of observation accuracy).
+- Done: general workflow CLI and HTML/JSON notebook, reference citation validation,
+  bounded revision history, cached observations and expert-answer reanalysis.
+  30 offline tests pass. `examples/synthetic-workflow.*` is explicitly synthetic;
+  no real general-workflow result has been measured. References currently accept
+  UTF-8 .txt/.md excerpts; PDF ingestion and automatic source discovery are not implemented.
+- Done: Next.js workspace in `web/` (user-requested UI). Start with
+  `npm ci --prefix web` then `npm run dev` (127.0.0.1:3040). It opens saved
+  workflow JSON, plays a locally attached source video, exposes citations/history,
+  and exports expert answers. `/api/analyze` invokes `unwritten.web_bridge` locally;
+  credentials are server-only in `web/.env.local`. 32 offline Python tests pass.
+  Run `npm run build` and `npm run typecheck` for UI changes. Real Meta validation
+  is still pending. Browser drafts are not persisted unless exported.
 
 ## Next steps, in priority order
 1. Real run on a 1–2 min sorting clip; inspect the observation log accuracy. If poor, try shorter

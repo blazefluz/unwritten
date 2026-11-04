@@ -47,6 +47,7 @@ import {
   localCommand,
   makeObject,
   marketWorld,
+  MARKET_REASONS,
   proposalSchema,
   repairPlacement,
   sceneSchema,
@@ -55,7 +56,7 @@ import {
   type SceneObject,
   type World,
 } from "@/lib/studio/scene";
-import type { ViewMode } from "./viewport";
+import type { BuildProgress, ViewMode } from "./viewport";
 import SceneSwitch from "./scene-switch";
 const Viewport = dynamic(() => import("./viewport"), {
   ssr: false,
@@ -77,8 +78,20 @@ type Pending = {
   issues: string[];
   message: string;
   source: string;
+  reasons: Record<string, string>;
 };
 const STORAGE = "world-studio.scene.v1";
+// The example's narration is scripted, like the example itself.
+function scriptedMarket(): [World, string, Record<string, string>] {
+  const world = marketWorld();
+  return [
+    world,
+    "Loaded the scripted maker’s market example. Its narration is scripted, not AI. Undo is available.",
+    Object.fromEntries(
+      world.objects.map((o) => [o.id, MARKET_REASONS[o.label]]),
+    ),
+  ];
+}
 const initialMessage: Message = {
   role: "assistant",
   text: "Let’s make a space together. Start with an empty room, or explore the maker’s market example. Select anything to change it.",
@@ -110,7 +123,10 @@ export default function WorldStudio() {
   const [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [help, setHelp] = useState(false),
-    [paused, setPaused] = useState(false);
+    [paused, setPaused] = useState(false),
+    [building, setBuilding] = useState<BuildProgress | null>(null),
+    [choreograph, setChoreograph] = useState(true),
+    [reasons, setReasons] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false),
     [panel, setPanel] = useState<"objects" | "chat">("chat");
   const log = useRef<HTMLDivElement>(null),
@@ -173,7 +189,14 @@ export default function WorldStudio() {
       behavior: "instant",
     });
   }, [messages, busy]);
-  function commit(next: World, label?: string) {
+  function commit(
+    next: World,
+    label?: string,
+    animate = true,
+    spoken: Record<string, string> = {},
+  ) {
+    setChoreograph(animate);
+    setReasons(spoken);
     setHistory((old) => [...old.slice(-29), currentWorld.current]);
     setWorld(next);
     revision.current += 1;
@@ -183,14 +206,19 @@ export default function WorldStudio() {
     if (selectedId && !next.objects.some((o) => o.id === selectedId))
       setSelected(null);
   }
-  function propose(proposal: Proposal, source: string) {
+  function propose(proposal: Proposal, source: string, animate = true) {
     const next = applyProposal(currentWorld.current, proposal);
     const changed = proposal.actions.flatMap((a) =>
       a.type === "add" || a.type === "update" ? [a.object.id] : [],
     );
+    const spoken: Record<string, string> = {};
+    for (const a of proposal.actions)
+      if ((a.type === "add" || a.type === "update") && a.reason)
+        spoken[a.object.id] = a.reason;
     const issues = inspectScene(next);
     if (issues.length) {
       setPending({
+        reasons: spoken,
         world: next,
         ids: changed,
         issues: issues.map((i) => i.message),
@@ -205,7 +233,7 @@ export default function WorldStudio() {
       return;
     }
     if (proposal.actions.length) {
-      commit(next);
+      commit(next, undefined, animate, spoken);
       if (changed.length) setSelected(changed[changed.length - 1]);
     }
     addMessage({ role: "assistant", text: proposal.message, source });
@@ -218,12 +246,51 @@ export default function WorldStudio() {
           actions: [{ type: "update", object }],
         },
         "Local edit",
+        false,
       );
     } catch {
       setError(
         "That edit is outside the supported range. Positions must remain within the room.",
       );
     }
+  }
+  function remove(object: SceneObject) {
+    propose(
+      {
+        message: `Removed ${object.label}. Undo is available.`,
+        actions: [{ type: "remove", id: object.id }],
+      },
+      "Local edit",
+      false,
+    );
+  }
+  function duplicate(object: SceneObject) {
+    if (world.objects.length >= 40) {
+      setError(
+        "This prototype supports up to 40 objects. Remove one before adding another.",
+      );
+      return;
+    }
+    const base = makeObject(object.kind, object.x, object.z);
+    const copy = findSpace(world, {
+      ...object,
+      id: base.id,
+      label: object.label.endsWith(" copy")
+        ? object.label
+        : `${object.label} copy`.slice(0, 80),
+    });
+    if (!copy) {
+      setError("No clear floor space was found for a copy.");
+      return;
+    }
+    propose(
+      {
+        message: `Duplicated ${object.label}.`,
+        actions: [{ type: "add", object: copy }],
+      },
+      "Local edit",
+    );
+    setSelected(copy.id);
   }
   function add(kind: Kind) {
     if (busy || pending) return;
@@ -305,6 +372,7 @@ export default function WorldStudio() {
     if (!history.length || busy) return;
     const previous = history[history.length - 1];
     setHistory(history.slice(0, -1));
+    setChoreograph(false);
     setWorld(previous);
     revision.current += 1;
     setPending(null);
@@ -312,9 +380,13 @@ export default function WorldStudio() {
     setError("");
     setNotice("Undid the last scene change.");
   }
-  function load(next: World, label: string) {
+  function load(
+    next: World,
+    label: string,
+    spoken: Record<string, string> = {},
+  ) {
     if (busy) return;
-    commit(next, label);
+    commit(next, label, true, spoken);
     setSelected(null);
     addMessage({ role: "system", text: label });
   }
@@ -354,6 +426,47 @@ export default function WorldStudio() {
     ? inspectScene(pending.world).flatMap((i) => i.ids)
     : [];
   const locked = busy || Boolean(pending);
+  // Direct shortcuts for the selected object. Skipped while typing, while a
+  // proposal is pending, and for keys the walk view uses on the canvas.
+  useEffect(() => {
+    function shortcut(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (
+        e.metaKey ||
+        e.ctrlKey ||
+        e.altKey ||
+        target.closest("input, textarea, select, [contenteditable]") ||
+        (view === "walk" && target.tagName === "CANVAS")
+      )
+        return;
+      if (e.key === "Escape" && selected) {
+        setSelected(null);
+        return;
+      }
+      if (!selected || locked) return;
+      const key = e.key.toLowerCase();
+      const nudge: Record<string, [number, number]> = {
+        arrowleft: [-0.5, 0],
+        arrowright: [0.5, 0],
+        arrowup: [0, -0.5],
+        arrowdown: [0, 0.5],
+      };
+      if (nudge[key]) {
+        const [dx, dz] = nudge[key];
+        manual({ ...selected, x: selected.x + dx, z: selected.z + dz });
+      } else if (key === "r")
+        manual({
+          ...selected,
+          rotation: ((selected.rotation + 90) % 360) as SceneObject["rotation"],
+        });
+      else if (key === "d") duplicate(selected);
+      else if (key === "delete" || key === "backspace") remove(selected);
+      else return;
+      e.preventDefault();
+    }
+    window.addEventListener("keydown", shortcut);
+    return () => window.removeEventListener("keydown", shortcut);
+  });
   return (
     <main className="ws-app">
       <a className="ws-skip" href="#ws-command">
@@ -464,15 +577,7 @@ export default function WorldStudio() {
             </span>
           </div>
           <div className="ws-scene-actions">
-            <button
-              disabled={locked}
-              onClick={() =>
-                load(
-                  marketWorld(),
-                  "Loaded the scripted maker’s market example. Undo is available.",
-                )
-              }
-            >
+            <button disabled={locked} onClick={() => load(...scriptedMarket())}>
               <Grid2X2 size={15} />
               Maker’s market
               <ArrowUpRight size={14} />
@@ -610,27 +715,37 @@ export default function WorldStudio() {
             paused={paused}
             view={view}
             onSelect={setSelected}
+            onBuild={setBuilding}
+            choreograph={choreograph}
+            reasons={reasons}
+            editable={!locked}
+            onMove={(id, x, z) => {
+              const object = currentWorld.current.objects.find(
+                (o) => o.id === id,
+              );
+              if (object) manual({ ...object, x, z });
+            }}
           />
           <div className="ws-stage-note">
             <span className="ws-avatar-marker" />
             <span>
               {busy
                 ? "Muse is considering your space…"
-                : selected
-                  ? `Muse is beside ${selected.label.toLowerCase()}`
-                  : "Muse is here to build with you"}
+                : building
+                  ? `Muse is building ${building.label.toLowerCase()} · ${building.done + 1} of ${building.total}`
+                  : selected
+                    ? `Muse is beside ${selected.label.toLowerCase()}`
+                    : "Muse is here to build with you"}
+              {building?.reason && !busy && (
+                <span className="visually-hidden">. {building.reason}</span>
+              )}
             </span>
           </div>
           {!world.objects.length && (
             <div className="ws-start">
               <button
                 disabled={locked}
-                onClick={() =>
-                  load(
-                    marketWorld(),
-                    "Loaded the scripted maker’s market example. Undo is available.",
-                  )
-                }
+                onClick={() => load(...scriptedMarket())}
               >
                 Explore a maker’s market
                 <ArrowUpRight size={16} />
@@ -675,8 +790,8 @@ export default function WorldStudio() {
             {view === "walk"
               ? "Focus the scene · WASD / arrows to walk · drag to look"
               : view === "top"
-                ? "Scroll to zoom · right-drag to pan"
-                : "Drag to orbit · scroll to zoom · click to select"}
+                ? "Drag furniture to move it · scroll to zoom · right-drag to pan"
+                : "Drag furniture to move it · drag the floor to orbit · R rotate · D duplicate"}
           </div>
           {pending && (
             <div className="ws-conflict" role="alert">
@@ -703,7 +818,12 @@ export default function WorldStudio() {
                       );
                       return;
                     }
-                    commit(fixed, "Placement repaired using footprint checks.");
+                    commit(
+                      fixed,
+                      "Placement repaired using footprint checks.",
+                      true,
+                      pending.reasons,
+                    );
                     addMessage({
                       role: "assistant",
                       text: "Found clear floor space for the proposed objects. Check the arrangement and undo if you prefer.",
@@ -835,15 +955,7 @@ export default function WorldStudio() {
                   aria-label="Delete selected object"
                   title="Delete object"
                   disabled={locked}
-                  onClick={() =>
-                    propose(
-                      {
-                        message: `Removed ${selected.label}. Undo is available.`,
-                        actions: [{ type: "remove", id: selected.id }],
-                      },
-                      "Local edit",
-                    )
-                  }
+                  onClick={() => remove(selected)}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -1053,8 +1165,10 @@ export default function WorldStudio() {
           </div>
           <p>
             Drag the scene to orbit, scroll to zoom, or select{" "}
-            <strong>Walk</strong> and focus the canvas to move with WASD. Use
-            the object list and inspector for keyboard editing.
+            <strong>Walk</strong> and focus the canvas to move with WASD. In
+            orbit and plan views, drag furniture to move it; a red outline means
+            it would overlap. With an object selected: arrows nudge 0.5 m, R
+            rotates, D duplicates, Delete removes, Esc deselects.
           </p>
           <h3>Build together</h3>
           <p>

@@ -112,10 +112,24 @@ export const sceneSchema = z
       ctx.addIssue({ code: "custom", message: "Object IDs must be unique." });
   });
 export type World = z.infer<typeof sceneSchema>;
+// Optional one-line rationale the avatar says aloud while it builds.
+const reasonSchema = z.string().trim().max(160).optional();
 export const actionSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("add"), object: objectSchema }),
-  z.object({ type: z.literal("update"), object: objectSchema }),
-  z.object({ type: z.literal("remove"), id: z.string().min(1).max(60) }),
+  z.object({
+    type: z.literal("add"),
+    object: objectSchema,
+    reason: reasonSchema,
+  }),
+  z.object({
+    type: z.literal("update"),
+    object: objectSchema,
+    reason: reasonSchema,
+  }),
+  z.object({
+    type: z.literal("remove"),
+    id: z.string().min(1).max(60),
+    reason: reasonSchema,
+  }),
   z.object({ type: z.literal("lighting"), value: z.enum(["day", "night"]) }),
 ]);
 export const proposalSchema = z.object({
@@ -232,6 +246,20 @@ export const EMPTY_WORLD: World = {
   lighting: "day",
   objects: [],
 };
+// Scripted narration for the built-in example. Shown only for that example,
+// which the studio labels as scripted rather than AI output.
+export const MARKET_REASONS: Record<string, string> = {
+  "Display counter": "Counter near the entrance so visitors see work first.",
+  "Making table": "Making table in the open, where people can watch.",
+  "Stock shelving": "Stock against the back wall, out of the walkway.",
+  "Material shelving": "Materials beside the table, one step from the work.",
+  "Maker’s chair": "Chair facing the table and the visitors.",
+  "Corner plant": "A plant softens the empty back corner.",
+  "Task light": "Light over the making table for close work.",
+  "Storage crate": "Crate tucked behind the counter for spare stock.",
+  "Work zone": "Rug marks the making zone so visitors know where to stand.",
+  "Visitor stool": "A stool at the counter invites people to stay.",
+};
 export function marketWorld(): World {
   const specifications: [Kind, number, number, string, number?][] = [
     ["counter", -2.6, 0, "Display counter"],
@@ -286,6 +314,7 @@ export function localCommand(
       actions: marketWorld().objects.map((object) => ({
         type: "add" as const,
         object,
+        reason: MARKET_REASONS[object.label],
       })),
     };
   }

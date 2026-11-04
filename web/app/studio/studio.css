@@ -1520,3 +1520,45 @@
     margin-left: auto;
   }
 }
+
+/* Avatar narration while building */
+.ws-bubble {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  max-width: 240px;
+  padding: 8px 11px;
+  margin-top: -10px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ws-ink);
+  background: #fffffff2;
+  border: 1px solid #dde0d7;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px #2528241f;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  will-change: transform;
+}
+.ws-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-right: 1px solid #dde0d7;
+  border-bottom: 1px solid #dde0d7;
+  transform: translateX(-50%) rotate(45deg);
+}
+.ws-bubble.is-visible {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-bubble {
+    transition: none;
+  }
+}

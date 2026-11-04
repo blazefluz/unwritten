@@ -11,6 +11,8 @@ import {
   marketWorld,
   repairPlacement,
   sceneSchema,
+  proposalSchema,
+  MARKET_REASONS,
 } from "../lib/studio/scene";
 
 test("example layout has unique IDs, stays inside the room, and has no overlaps", () => {
@@ -95,4 +97,29 @@ test("import rejects duplicate IDs, arbitrary object kinds and non-finite coordi
       sceneSchema.safeParse({ ...EMPTY_WORLD, objects }).success,
       false,
     );
+});
+test("build reasons are optional, bounded, and scripted only for the example", () => {
+  const object = makeObject("table");
+  const ok = proposalSchema.safeParse({
+    message: "Add a table",
+    actions: [{ type: "add", object, reason: "Anchors the room." }],
+  });
+  assert.equal(ok.success, true);
+  assert.equal(
+    proposalSchema.safeParse({
+      message: "Add a table",
+      actions: [{ type: "add", object }],
+    }).success,
+    true,
+  );
+  assert.equal(
+    proposalSchema.safeParse({
+      message: "Add a table",
+      actions: [{ type: "add", object, reason: "x".repeat(161) }],
+    }).success,
+    false,
+  );
+  const scripted = localCommand(EMPTY_WORLD, "build a market", null);
+  assert.ok(scripted.actions.every((a) => a.type === "add" && a.reason));
+  assert.ok(marketWorld().objects.every((o) => MARKET_REASONS[o.label]));
 });

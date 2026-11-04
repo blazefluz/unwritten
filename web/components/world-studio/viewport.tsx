@@ -5,6 +5,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import {
   CATALOG,
   footprint,
+  inspectScene,
   type SceneObject,
   type World,
 } from "@/lib/studio/scene";
@@ -19,6 +20,26 @@ type Props = {
   paused: boolean;
   view: ViewMode;
   onSelect: (id: string | null) => void;
+  onBuild?: (progress: BuildProgress | null) => void;
+  /** Animate the avatar building changed objects (AI, commands, examples). */
+  choreograph?: boolean;
+  /** Allow direct drag-to-move in orbit and plan views. */
+  editable?: boolean;
+  onMove?: (id: string, x: number, z: number) => void;
+  /** One-line reasons, by object id, spoken while the avatar builds. */
+  reasons?: Record<string, string>;
+};
+export type BuildProgress = {
+  label: string;
+  done: number;
+  total: number;
+  reason?: string;
+};
+type BuildJob = {
+  object: SceneObject;
+  group: THREE.Group;
+  old?: THREE.Group;
+  reason?: string;
 };
 type Engine = {
   sync: (props: Props) => void;
@@ -159,6 +180,10 @@ function createObject(o: SceneObject, ghost = false): THREE.Group {
       material("#fff0ba", { emissive: "#ffd477", emissiveIntensity: 0.9 }),
     );
     bulb.castShadow = false;
+    const glow = new THREE.PointLight("#ffc46b", 0, 5.5, 1.6);
+    glow.position.set(0, 1.7, 0);
+    glow.userData.lampGlow = true;
+    root.add(glow);
   } else if (o.kind === "partition") {
     box(root, [w, h - 0.12, 0.18], [0, h / 2 + 0.06, 0], paint);
     for (const x of [-w / 2 + 0.2, w / 2 - 0.2])
@@ -348,18 +373,141 @@ function createEngine(
     lastTime = 0,
     visible = true;
   const target = new THREE.Vector3(2.8, 0, 2.5),
+    restTarget = new THREE.Vector3(2.8, 0, 2.5),
     keys = new Set<string>();
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   const down = new THREE.Vector2(),
     lastPointer = new THREE.Vector2();
   let looking = false;
   const raycaster = new THREE.Raycaster();
+  const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+    floorHit = new THREE.Vector3(),
+    dragOverlay = new THREE.Group();
+  scene.add(dragOverlay);
+  let drag: {
+    id: string;
+    group: THREE.Group;
+    object: SceneObject;
+    dx: number;
+    dz: number;
+    x: number;
+    z: number;
+    active: boolean;
+  } | null = null;
+  let resetDragged: string | null = null;
+  function aim(e: PointerEvent) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    raycaster.setFromCamera(
+      new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        (-(e.clientY - rect.top) / rect.height) * 2 + 1,
+      ),
+      camera,
+    );
+  }
+  function pick(e: PointerEvent) {
+    aim(e);
+    let object: THREE.Object3D | undefined = raycaster.intersectObjects(
+      objects.children,
+      true,
+    )[0]?.object;
+    while (object && !object.userData.objectId) object = object.parent!;
+    return object as THREE.Group | undefined;
+  }
+  // Runs in the capture phase so OrbitControls never starts an orbit when the
+  // pointer lands on furniture: that gesture moves the object instead.
+  function grab(e: PointerEvent) {
+    if (
+      currentView === "walk" ||
+      !props.editable ||
+      !props.onMove ||
+      buildQueue.length ||
+      e.button !== 0
+    )
+      return;
+    const group = pick(e);
+    const object = props.world.objects.find(
+      (o) => o.id === group?.userData.objectId,
+    );
+    if (
+      !group ||
+      !object ||
+      !raycaster.ray.intersectPlane(floorPlane, floorHit)
+    )
+      return;
+    controls.enabled = false;
+    drag = {
+      id: object.id,
+      group,
+      object,
+      dx: object.x - floorHit.x,
+      dz: object.z - floorHit.z,
+      x: object.x,
+      z: object.z,
+      active: false,
+    };
+  }
+  function dragTo(e: PointerEvent) {
+    if (!drag) return;
+    if (
+      !drag.active &&
+      down.distanceTo(new THREE.Vector2(e.clientX, e.clientY)) <= 5
+    )
+      return;
+    if (!drag.active) {
+      drag.active = true;
+      props.onSelect(drag.id);
+      renderer.domElement.style.cursor = "grabbing";
+    }
+    aim(e);
+    if (!raycaster.ray.intersectPlane(floorPlane, floorHit)) return;
+    const f = footprint(drag.object);
+    const snap = (v: number) => Math.round(v * 4) / 4;
+    drag.x = THREE.MathUtils.clamp(
+      snap(floorHit.x + drag.dx),
+      -6 + f.w / 2,
+      6 - f.w / 2,
+    );
+    drag.z = THREE.MathUtils.clamp(
+      snap(floorHit.z + drag.dz),
+      -5 + f.d / 2,
+      5 - f.d / 2,
+    );
+    drag.group.position.set(drag.x, 0, drag.z);
+    const moved = { ...drag.object, x: drag.x, z: drag.z };
+    const clash = inspectScene({
+      ...props.world,
+      objects: props.world.objects.map((o) => (o.id === moved.id ? moved : o)),
+    }).some((issue) => issue.ids.includes(moved.id));
+    disposeGroup(dragOverlay);
+    ring(moved, clash ? "#c93527" : "#2f8a4f", clash, dragOverlay);
+  }
+  function drop() {
+    if (!drag) return;
+    const finished = drag;
+    drag = null;
+    controls.enabled = currentView !== "walk";
+    disposeGroup(dragOverlay);
+    renderer.domElement.style.cursor = "";
+    if (!finished.active) return;
+    // Snap back visually; the committed scene (or a conflict preview) redraws it.
+    resetDragged = finished.id;
+    if (finished.x !== finished.object.x || finished.z !== finished.object.z)
+      props.onMove?.(finished.id, finished.x, finished.z);
+    else finished.group.position.set(finished.object.x, 0, finished.object.z);
+  }
+  function hover(e: PointerEvent) {
+    if (drag || e.buttons || currentView === "walk") return;
+    renderer.domElement.style.cursor = props.editable && pick(e) ? "grab" : "";
+  }
   function pointerDown(e: PointerEvent) {
     down.set(e.clientX, e.clientY);
     lastPointer.copy(down);
     looking = true;
   }
   function pointerMove(e: PointerEvent) {
+    if (drag) return dragTo(e);
+    hover(e);
     if (!looking || currentView !== "walk") return;
     const dx = e.clientX - lastPointer.x,
       dy = e.clientY - lastPointer.y;
@@ -379,9 +527,13 @@ function createEngine(
   }
   function pointerEnd() {
     looking = false;
+    drop();
   }
   function click(e: PointerEvent) {
     looking = false;
+    const dragged = drag?.active;
+    drop();
+    if (dragged) return;
     if (down.distanceTo(new THREE.Vector2(e.clientX, e.clientY)) > 5) return;
     const rect = renderer.domElement.getBoundingClientRect();
     raycaster.setFromCamera(
@@ -420,6 +572,7 @@ function createEngine(
   function blur() {
     keys.clear();
   }
+  host.addEventListener("pointerdown", grab, { capture: true });
   renderer.domElement.addEventListener("pointerdown", pointerDown);
   renderer.domElement.addEventListener("pointerup", click);
   renderer.domElement.addEventListener("pointermove", pointerMove);
@@ -444,7 +597,12 @@ function createEngine(
     visible = entries[0].isIntersecting;
   });
   observer.observe(host);
-  function ring(object: SceneObject, color: string, dashed = false) {
+  function ring(
+    object: SceneObject,
+    color: string,
+    dashed = false,
+    into: THREE.Group = overlay,
+  ) {
     const f = footprint(object);
     const points = [
       [-f.w / 2, -f.d / 2],
@@ -459,7 +617,90 @@ function createEngine(
         : new THREE.LineBasicMaterial({ color }),
     );
     line.computeLineDistances();
-    overlay.add(line);
+    if (into === dragOverlay) {
+      // Keep the drag outline visible through the object being carried.
+      (line.material as THREE.Material).depthTest = false;
+      line.renderOrder = 10;
+    }
+    into.add(line);
+  }
+  // Build choreography: changed objects wait off-stage until the avatar
+  // reaches them, so a proposal appears to be built piece by piece. The scene
+  // state itself is already committed; this only staggers what is drawn.
+  let buildQueue: BuildJob[] = [],
+    buildTotal = 0,
+    buildDone = 0,
+    workTime = 0;
+  function beside(object: SceneObject, out: THREE.Vector3) {
+    const f = footprint(object);
+    return out.set(
+      THREE.MathUtils.clamp(object.x + f.w / 2 + 0.65, -5.4, 5.4),
+      0,
+      THREE.MathUtils.clamp(object.z + f.d / 2 + 0.6, -4.4, 4.4),
+    );
+  }
+  function reportBuild() {
+    const job = buildQueue[0];
+    props.onBuild?.(
+      job
+        ? {
+            label: job.object.label,
+            done: buildDone,
+            total: buildTotal,
+            reason: job.reason,
+          }
+        : null,
+    );
+  }
+  // Speech bubble that follows the avatar's head while it explains a step.
+  const bubble = document.createElement("div");
+  bubble.className = "ws-bubble";
+  bubble.setAttribute("aria-hidden", "true");
+  host.appendChild(bubble);
+  const head3 = new THREE.Vector3();
+  let bubbleText = "",
+    bubbleLinger = 0;
+  function speak(text: string) {
+    if (text === bubbleText) return;
+    bubbleText = text;
+    bubble.textContent = text;
+    bubble.classList.toggle("is-visible", Boolean(text));
+  }
+  function placeBubble() {
+    if (!bubbleText) return;
+    head3.copy(robot.position).setY(2.05).project(camera);
+    const behind = head3.z > 1;
+    const rect = renderer.domElement.getBoundingClientRect();
+    bubble.style.transform = `translate(${((head3.x + 1) / 2) * rect.width}px, ${((1 - head3.y) / 2) * rect.height}px) translate(-50%, -100%)`;
+    bubble.style.visibility = behind ? "hidden" : "";
+  }
+  function place(job: BuildJob, animate: boolean) {
+    if (job.old) {
+      objects.remove(job.old);
+      disposeGroup(job.old);
+    }
+    lampGlow(job.group);
+    if (animate) {
+      job.group.userData.targetScale = job.object.scale;
+      job.group.scale.setScalar(0.01);
+    }
+    objects.add(job.group);
+  }
+  function lampGlow(group: THREE.Object3D) {
+    const night = props.world.lighting === "night";
+    group.traverse((child) => {
+      if (child.userData.lampGlow)
+        (child as THREE.PointLight).intensity = night ? 7 : 0;
+    });
+  }
+  function flushBuild() {
+    bubbleLinger = 0;
+    speak("");
+    if (!buildQueue.length) return;
+    buildQueue.forEach((job) => place(job, false));
+    buildQueue = [];
+    buildTotal = buildDone = workTime = 0;
+    reportBuild();
   }
   function sync(next: Props) {
     props = next;
@@ -470,47 +711,63 @@ function createEngine(
     fill.intensity = night ? 1.8 : 1;
     sun.color.set(night ? "#ffbf78" : "#fff0d7");
     if (lastWorld !== props.world) {
+      const first = lastWorld === null;
+      flushBuild();
       const previous = new Map(
         lastWorld?.objects.map((o) => [o.id, JSON.stringify(o)]) || [],
       );
       const current = new Map(
         props.world.objects.map((o) => [o.id, JSON.stringify(o)]),
       );
+      const replaced = new Map<string, THREE.Group>();
       for (const group of [...objects.children] as THREE.Group[]) {
-        if (
-          previous.get(group.userData.objectId) !==
-            current.get(group.userData.objectId) ||
-          !current.has(group.userData.objectId)
-        ) {
+        const id = group.userData.objectId;
+        if (!current.has(id)) {
           objects.remove(group);
           disposeGroup(group);
-        }
+        } else if (previous.get(id) !== current.get(id))
+          replaced.set(id, group);
       }
       const existing = new Set(
         objects.children.map((group) => group.userData.objectId),
       );
-      for (const o of props.world.objects)
-        if (!existing.has(o.id)) {
-          const group = createObject(o);
-          if (!previous.has(o.id) && !reduced.matches && !props.paused) {
-            group.userData.targetScale = o.scale;
-            group.scale.setScalar(0.01);
-          }
-          objects.add(group);
-        }
+      const choreograph =
+        !first &&
+        props.choreograph !== false &&
+        !reduced.matches &&
+        !props.paused;
+      for (const o of props.world.objects) {
+        const old = replaced.get(o.id);
+        if (existing.has(o.id) && !old) continue;
+        const job = {
+          object: o,
+          group: createObject(o),
+          old,
+          reason: props.reasons?.[o.id],
+        };
+        if (choreograph) buildQueue.push(job);
+        else place(job, !old && !reduced.matches && !props.paused);
+      }
+      buildTotal = buildQueue.length;
+      buildDone = workTime = 0;
       lastWorld = props.world;
+      reportBuild();
     }
+    if (resetDragged) {
+      const o = props.world.objects.find((a) => a.id === resetDragged);
+      const group = objects.children.find(
+        (g) => g.userData.objectId === resetDragged,
+      );
+      if (o && group) group.position.set(o.x, 0, o.z);
+      resetDragged = null;
+    }
+    objects.children.forEach(lampGlow);
     disposeGroup(overlay);
     const selected = props.world.objects.find((o) => o.id === props.selectedId);
     if (selected) {
       ring(selected, "#ff4f00");
-      const f = footprint(selected);
-      target.set(
-        THREE.MathUtils.clamp(selected.x + f.w / 2 + 0.65, -5.4, 5.4),
-        0,
-        THREE.MathUtils.clamp(selected.z + f.d / 2 + 0.6, -4.4, 4.4),
-      );
-    } else target.set(2.8, 0, 2.5);
+      beside(selected, restTarget);
+    } else restTarget.set(2.8, 0, 2.5);
     if (props.preview)
       for (const o of props.preview.objects) {
         const before = props.world.objects.find((a) => a.id === o.id);
@@ -568,11 +825,44 @@ function createEngine(
       controls.target.add(camera.position.clone().sub(old));
     }
     controls.update();
-    const moving = robot.position.distanceTo(target) > 0.05;
+    if (buildQueue.length && (reduced.matches || props.paused)) flushBuild();
+    const job = buildQueue[0];
+    if (job) beside(job.object, target);
+    else target.copy(restTarget);
+    const distance = robot.position.distanceTo(target);
+    const moving = distance > 0.05;
+    let working = false;
     if (reduced.matches) robot.position.copy(target);
-    else if (!props.paused) {
+    else if (!props.paused && job) {
+      // Walk at a steady pace between build sites; long queues hurry up.
+      const step = dt * Math.min(9, 3.5 + buildQueue.length * 0.4);
+      if (distance > step)
+        robot.position.add(
+          delta.subVectors(target, robot.position).setLength(step),
+        );
+      else {
+        robot.position.copy(target);
+        working = true;
+        workTime += dt;
+        // Pause long enough to read the reason before moving on.
+        if (workTime > (job.reason ? 1.1 : 0.35)) {
+          place(job, true);
+          buildQueue.shift();
+          buildDone += 1;
+          workTime = 0;
+          if (!buildQueue.length && job.reason) bubbleLinger = 1.8;
+          reportBuild();
+        }
+      }
+    } else if (!props.paused)
       robot.position.lerp(target, Math.min(1, dt * 1.8));
-      if (moving)
+    if (!reduced.matches && !props.paused) {
+      if (working)
+        robot.rotation.y = Math.atan2(
+          job!.object.x - robot.position.x,
+          job!.object.z - robot.position.z,
+        );
+      else if (moving)
         robot.rotation.y = Math.atan2(
           target.x - robot.position.x,
           target.z - robot.position.z,
@@ -583,15 +873,22 @@ function createEngine(
         leg.rotation.x = moving ? Math.sin(t * 9 + i * Math.PI) * 0.3 : 0;
       });
       arms.forEach((arm, i) => {
-        arm.rotation.x = props.busy
-          ? -0.6 + Math.sin(t * 3 + i) * 0.15
-          : moving
-            ? Math.sin(t * 9 + i * Math.PI) * -0.22
-            : 0;
+        arm.rotation.x = working
+          ? -1.1 + Math.sin(t * 14 + i * Math.PI) * 0.35
+          : props.busy
+            ? -0.6 + Math.sin(t * 3 + i) * 0.15
+            : moving
+              ? Math.sin(t * 9 + i * Math.PI) * -0.22
+              : 0;
       });
       head.position.y = 1.4 + Math.sin(t * 2) * 0.012;
       body.position.y = 0.88 + Math.sin(t * 2) * 0.007;
     }
+    const speaking = buildQueue[0]?.reason;
+    if (speaking) speak(speaking);
+    else if (bubbleLinger > 0) bubbleLinger -= dt;
+    else speak("");
+    placeBubble();
     for (const object of objects.children)
       if (object.userData.targetScale) {
         const next =
@@ -620,6 +917,7 @@ function createEngine(
       resize.disconnect();
       observer.disconnect();
       controls.dispose();
+      host.removeEventListener("pointerdown", grab, { capture: true });
       renderer.domElement.removeEventListener("pointerdown", pointerDown);
       renderer.domElement.removeEventListener("pointerup", click);
       renderer.domElement.removeEventListener("pointermove", pointerMove);
@@ -628,11 +926,12 @@ function createEngine(
       window.removeEventListener("keyup", keyUp);
       renderer.domElement.removeEventListener("blur", blur);
       renderer.domElement.removeEventListener("webglcontextlost", contextLost);
-      [objects, overlay, room, robot].forEach(disposeGroup);
+      [objects, overlay, dragOverlay, room, robot].forEach(disposeGroup);
       grid.geometry.dispose();
       (grid.material as THREE.Material).dispose();
       renderer.dispose();
       renderer.domElement.remove();
+      bubble.remove();
     },
   };
 }
