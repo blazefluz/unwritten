@@ -177,6 +177,9 @@ test("a walled-off entrance and a missing counter show up in the results", () =>
   assert.equal(blocked.stats.gaveUp, 12);
   assert.equal(blocked.stats.bought, 0);
   assert.match(describeDay(blocked), /gave up/);
+  assert.equal(blocked.stats.entranceBlocked, true);
+  assert.match(describeDay(blocked), /entrance.*blocked/);
+  assert.equal(simulateDay(market).stats.entranceBlocked, false);
   const noCounter = {
     ...market,
     objects: market.objects.filter((o) => o.kind !== "counter"),

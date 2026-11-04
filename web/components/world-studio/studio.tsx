@@ -193,6 +193,7 @@ export default function WorldStudio() {
     openShop(wait.seed);
   });
   function improveFromDay(result: DayResult) {
+    if (busy || pending || request.current) return;
     const text = `Shoppers just tested this market (simulated in code). ${describeDay(result)} Rearrange the layout so every shopper can reach the merchandise and pay at the counter. Keep the existing objects where possible.`;
     closeShop();
     if (mode === "meta" && ready) {
@@ -391,10 +392,15 @@ export default function WorldStudio() {
   async function submit(event?: FormEvent, supplied?: string) {
     event?.preventDefault();
     const text = (supplied || prompt).trim();
-    if (!text || busy || pending) return;
+    if (!text || busy || pending || request.current) return;
     setError("");
     setPrompt("");
-    addMessage({ role: "user", text });
+    setMessages((old) => {
+      const last = old[old.length - 1];
+      return last?.role === "user" && last.text === text
+        ? old
+        : [...old.slice(-39), { role: "user", text }];
+    });
     if (mode === "local") {
       try {
         propose(localCommand(world, text, selectedId), "Local command · no AI");

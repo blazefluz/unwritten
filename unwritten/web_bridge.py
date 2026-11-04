@@ -15,7 +15,25 @@ def run(request):
         return propose_car(MetaClient(max_output_tokens=16000, timeout=90, max_retries=0), request)
     if request.get("operation") == "studio":
         from .studio import propose
-        return propose(MetaClient(max_output_tokens=8000, timeout=90, max_retries=1), request)
+        try:
+            return propose(MetaClient(max_output_tokens=16000, timeout=90, max_retries=0), request)
+        except Exception as exc:
+            # Return a bounded category, never provider text, credentials or request data.
+            status = getattr(exc, "status_code", None)
+            name = type(exc).__name__
+            if status in (401, 403):
+                category = "authentication"
+            elif status == 429:
+                category = "rate_limit"
+            elif "Timeout" in name:
+                category = "timeout"
+            elif isinstance(exc, (ValueError, json.JSONDecodeError)):
+                category = "invalid_response"
+            elif status is not None and status >= 500:
+                category = "provider_unavailable"
+            else:
+                category = "request_failed"
+            return {"bridge_error": category}
     if request.get("operation") == "training":
         from . import training
         store = Path(__file__).resolve().parents[1] / ".unwritten-runs" / "training"

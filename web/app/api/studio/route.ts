@@ -54,6 +54,38 @@ export async function POST(request: Request) {
       ...input,
       catalog: CATALOG,
     });
+    const failure = z.object({ bridge_error: z.string() }).safeParse(output);
+    if (failure.success) {
+      const messages: Record<string, [number, string]> = {
+        authentication: [
+          502,
+          "Meta rejected the API credentials or project access. Check MODEL_API_KEY and Meta project permissions, then restart the server. Your layout is unchanged.",
+        ],
+        rate_limit: [
+          429,
+          "Meta is rate-limiting requests or the project has reached its usage limit. Check Meta usage and billing, then retry. Your layout is unchanged.",
+        ],
+        timeout: [
+          504,
+          "Muse took too long to finish this layout. Retry once, or ask it to move fewer objects. Your layout is unchanged.",
+        ],
+        invalid_response: [
+          502,
+          "Muse did not return a complete layout proposal. Retry with fewer objects or a smaller change. Your layout is unchanged.",
+        ],
+        provider_unavailable: [
+          503,
+          "Meta is temporarily unavailable. Retry shortly. Your layout is unchanged.",
+        ],
+        request_failed: [
+          502,
+          "The Meta request failed before a usable proposal was returned. Check the server connection and Meta project access. Your layout is unchanged.",
+        ],
+      };
+      const [status, error] =
+        messages[failure.data.bridge_error] || messages.request_failed;
+      return Response.json({ error }, { status });
+    }
     return Response.json(proposalSchema.parse(output));
   } catch (error) {
     if (error instanceof z.ZodError)

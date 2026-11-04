@@ -45,6 +45,7 @@ export type DayResult = {
     busiest: string | null;
     hasCounter: boolean;
     merchandise: number;
+    entranceBlocked: boolean;
   };
 };
 
@@ -347,6 +348,7 @@ export function simulateDay(world: World, count = 12, seed = 7): DayResult {
         : null,
       hasCounter: counters.length > 0,
       merchandise: merchandise.length,
+      entranceBlocked: !free[cellAt(ENTRANCE.x, ENTRANCE.z)],
     },
   };
 }
@@ -377,6 +379,10 @@ export function describeDay(result: DayResult): string {
   const parts = [
     `${s.visitors} shoppers visited; ${s.bought} bought something.`,
   ];
+  if (s.entranceBlocked)
+    parts.push(
+      "The entrance at x=0, z=4.85 is blocked. Clear its furniture footprint plus 0.3 m walking clearance and leave a connected aisle into the room.",
+    );
   if (!s.hasCounter)
     parts.push("There is no display counter, so nobody could pay.");
   else if (s.noCheckout)

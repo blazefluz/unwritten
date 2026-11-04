@@ -54,6 +54,10 @@ For update provide the COMPLETE object, preserving its id and all unchanged prop
 For add create a unique simple alphanumeric/hyphen ID. Use short descriptive labels and #RRGGBB colors.
 Do not change or remove unrelated objects. Maximum 40 objects total and 40 actions per response.
 Leave comfortable gaps between footprints and inside room bounds. Rugs may go under furniture.
+For shopper access, entrance is x=0, z=4.85. Keep it clear of furniture footprints plus
+0.3 m clearance. Preserve connected walking aisles from there to merchandise and counter.
+Use catalog footprint sizes and rotation to plan gaps; geometric non-overlap alone does not
+prove a shopper can pass. Only a rerun of the deterministic simulation measures that.
 The client independently checks floor footprints and will preview any overlaps before applying.
 If a requested edit is impossible, explain why without inventing a completed action.
 Don't claim to have applied anything; the message describes your proposal. Keep messages under 100 words.
