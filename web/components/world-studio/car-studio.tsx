@@ -18,7 +18,9 @@ import {
   Play,
   Plus,
   Ruler,
+  Route,
   Sparkles,
+  Wrench,
   Undo2,
   Upload,
   X,
@@ -34,6 +36,13 @@ import {
   type CarDocument,
 } from "@/lib/studio/car";
 import type { CarView } from "./car-viewport";
+import type { DriveTick } from "./car-show";
+import {
+  TRIP_KM,
+  describeDrive,
+  testDrive,
+  type DriveResult,
+} from "@/lib/studio/test-drive";
 import { normalizeCarProposal } from "@/lib/studio/car-proposal";
 import EngineeringPanel, { type EngineeringTab } from "./engineering-panel";
 import { evSchema, type EVConfig } from "@/lib/studio/ev";
@@ -154,6 +163,15 @@ export default function CarStudio() {
   const [assemblyMode, setAssemblyMode] = useState<AssemblyMode>("body");
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [runDrive, setRunDrive] = useState(false);
+  // Visible assembly and test drive (see car-show.ts).
+  const [assembleKey, setAssembleKey] = useState(0),
+    [assembling, setAssembling] = useState<string | null>(null),
+    [drive, setDrive] = useState<DriveResult | null>(null),
+    [driveTick, setDriveTick] = useState<DriveTick | null>(null),
+    [driveBaseline, setDriveBaseline] = useState<DriveResult | null>(null);
+  const assemblingNow = useRef(false),
+    improvingCar = useRef<CarDocument | null>(null),
+    driveCar = useRef<CarConfig | null>(null);
   const [loaded, setLoaded] = useState(false),
     [view, setView] = useState<CarView>("perspective"),
     [dimensions, setDimensions] = useState(true),
@@ -178,6 +196,53 @@ export default function CarStudio() {
   const car = document.car;
   const currentDocument = useRef(document);
   currentDocument.current = document;
+  function startDrive(keepBaseline = false) {
+    const active = currentDocument.current.car;
+    if (!active || busy) return;
+    if (!keepBaseline) setDriveBaseline(null);
+    driveCar.current = active;
+    setDriveTick(null);
+    setDrive(testDrive(active));
+    setStatus(
+      "Test drive started. The trip is scored with the steady-speed estimates in code, not AI.",
+    );
+  }
+  function endDrive() {
+    setDrive(null);
+    setDriveTick(null);
+  }
+  function improveFromDrive(result: DriveResult) {
+    const text = `I test drove this car on a fixed trip (scored in code). ${describeDrive(result)} Redesign it so it completes the whole ${TRIP_KM} km trip and fits the garage. Change battery, efficiency, drive or body settings as needed and explain the trade-offs.`;
+    endDrive();
+    if (mode === "meta" && ready) {
+      setDriveBaseline(result);
+      improvingCar.current = currentDocument.current;
+      void submit(undefined, text);
+    } else {
+      setPrompt(text);
+      setError(
+        "Improving the car from the test drive needs Meta AI. Switch to Meta, then send.",
+      );
+    }
+  }
+  // A changed car ends the current drive: its results describe the old design.
+  useEffect(() => {
+    if (drive && driveCar.current !== document.car) endDrive();
+  }, [document.car, drive]);
+  // After "Ask Muse to improve": wait for the redesign and its assembly, then
+  // drive the same trip again.
+  useEffect(() => {
+    const waiting = improvingCar.current;
+    if (!waiting || busy) return;
+    if (document === waiting) {
+      improvingCar.current = null;
+      setDriveBaseline(null);
+      return;
+    }
+    if (assemblingNow.current || assembling) return;
+    improvingCar.current = null;
+    startDrive(true);
+  });
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/studio", { signal: controller.signal })
@@ -269,6 +334,7 @@ export default function CarStudio() {
   function preset(style: CarConfig["style"]) {
     if (busy) return;
     commit({ ...document, car: { ...CAR_PRESETS[style] } });
+    setAssembleKey((k) => k + 1);
     message(
       `Created the ${style === "suv" ? "SUV" : style} preset. Change its dimensions, paint or details to make it yours.`,
       "Built-in preset · no AI",
@@ -329,6 +395,8 @@ export default function CarStudio() {
         throw new Error(
           "The saved world changed in another tab while Muse was working. The response was not applied. Retry against the current design.",
         );
+      if (proposal.car && JSON.stringify(proposal.car) !== JSON.stringify(car))
+        setAssembleKey((k) => k + 1);
       if (
         JSON.stringify(proposal.car) !== JSON.stringify(car) ||
         proposal.newBays.length
@@ -747,6 +815,13 @@ export default function CarStudio() {
             view={view}
             busy={busy}
             paused={paused}
+            assembleKey={assembleKey}
+            onAssembling={(line) => {
+              assemblingNow.current = line !== null;
+              setAssembling(line);
+            }}
+            drive={drive}
+            onDriveTick={setDriveTick}
           />
           <div className="ws-stage-heading">
             <div>
@@ -805,6 +880,27 @@ export default function CarStudio() {
               <Plus size={13} />
               Add bay
             </button>
+            <button
+              disabled={!car || busy || Boolean(drive)}
+              onClick={() => {
+                setAssemblyMode("body");
+                setAssembleKey((k) => k + 1);
+              }}
+            >
+              <Wrench size={13} />
+              Watch Muse assemble
+            </button>
+            <button
+              className="car-drive-button"
+              aria-pressed={Boolean(drive && !driveTick?.done)}
+              disabled={!car || busy}
+              onClick={() =>
+                drive && !driveTick?.done ? endDrive() : startDrive()
+              }
+            >
+              <Route size={13} />
+              {drive && !driveTick?.done ? "Stop drive" : "Test drive"}
+            </button>
           </div>
           {!car && (
             <div className="ws-start">
@@ -828,12 +924,77 @@ export default function CarStudio() {
               </span>
             </div>
           )}
+          {drive && driveTick?.done && (
+            <div className="ws-day-card car-drive-card" role="status">
+              <div>
+                <Route size={18} />
+                <strong>
+                  {drive.parked
+                    ? `Trip complete: ${TRIP_KM} km and parked`
+                    : `Stopped at ${Math.round(drive.reachedKm)} of ${TRIP_KM} km`}
+                </strong>
+                <button
+                  className="ws-icon-button"
+                  aria-label="Close test drive results"
+                  onClick={() => {
+                    endDrive();
+                    setDriveBaseline(null);
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              {driveBaseline && (
+                <p className="ws-day-compare">
+                  After Muse’s redesign, same trip:{" "}
+                  {Math.round(driveBaseline.reachedKm)} →{" "}
+                  {Math.round(drive.reachedKm)} km
+                  {driveBaseline.parked !== drive.parked
+                    ? drive.parked
+                      ? ", now parks in the garage"
+                      : ", no longer parks"
+                    : ""}
+                  .
+                </p>
+              )}
+              <ul className="car-drive-checks">
+                {drive.checks.map((c) => (
+                  <li key={c.id} data-ok={c.ok}>
+                    {c.ok ? <Check size={14} /> : <X size={14} />}
+                    <span>
+                      <strong>{c.label}</strong>
+                      {c.detail}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {drive.stop && <p>{drive.stop}.</p>}
+              <span>
+                Scored in code with steady-speed estimates and the assumptions
+                in Analysis. Not a vehicle simulation.
+              </span>
+              <div className="ws-conflict-actions">
+                <button onClick={() => improveFromDrive(drive)}>
+                  Ask Muse to improve
+                  <Sparkles size={15} />
+                </button>
+                <button onClick={() => startDrive()}>Drive again</button>
+              </div>
+            </div>
+          )}
           <div className="ws-stage-note">
             <span className="ws-avatar-marker" />
             <span>
-              {busy
-                ? "Muse is considering your design…"
-                : "Muse is here to shape it with you"}
+              {drive && driveTick && !driveTick.done
+                ? `Test drive · ${driveTick.leg} · ${Math.round(driveTick.km)} of ${TRIP_KM} km · battery ${Math.round(driveTick.battery * 100)}%`
+                : busy
+                  ? "Muse is considering your design…"
+                  : assembling
+                    ? `Muse is assembling the car`
+                    : "Muse is here to shape it with you"}
+              {assembling && !busy && (
+                <span className="visually-hidden">. {assembling}</span>
+              )}
             </span>
           </div>
           <div className="ws-viewport-tools">

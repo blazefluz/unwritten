@@ -7,6 +7,7 @@ import { createCarModel, disposeCarGroup } from "@/lib/studio/car-model";
 import type { CarConfig, CarDocument } from "@/lib/studio/car";
 import { createEVAssembly, type AssemblyMode } from "@/lib/studio/ev-model";
 import { createGeneratedPart } from "@/lib/studio/part-model";
+import { createCarShow, type ShowProps } from "./car-show";
 export type CarView = "perspective" | "side" | "front" | "top" | "world";
 type Props = {
   car: CarConfig | null;
@@ -19,7 +20,7 @@ type Props = {
   view: CarView;
   busy: boolean;
   paused: boolean;
-};
+} & Pick<ShowProps, "assembleKey" | "drive" | "onDriveTick" | "onAssembling">;
 export default function CarViewport(props: Props) {
   const host = useRef<HTMLDivElement>(null),
     latest = useRef(props);
@@ -204,7 +205,9 @@ export default function CarViewport(props: Props) {
       }
       let current = latest.current,
         previousCar = "",
-        showDimensions = false;
+        showDimensions = false,
+        showActive = false;
+      let show: ReturnType<typeof createCarShow> | null = null;
       function sync(next: Props) {
         const changedBay = current.activeBayId !== next.activeBayId;
         current = next;
@@ -217,6 +220,7 @@ export default function CarViewport(props: Props) {
           next.assemblyMode,
           next.selectedPart,
         ]);
+        const rebuilt = key !== previousCar;
         if (key !== previousCar) {
           disposeCarGroup(carRoot);
           const bays = next.bays.length
@@ -276,10 +280,11 @@ export default function CarViewport(props: Props) {
           previousCar = key;
         }
         dimensions.position.set(ax, 0, az);
-        avatar.position.set(ax - 3.4, 0, az + 2);
+        if (!showActive) avatar.position.set(ax - 3.4, 0, az + 2);
         sun.position.set(ax + 2, 9, az + 5);
         sun.target.position.set(ax, 0, az);
         if (changedBay) view(next.view);
+        show?.sync(next, rebuilt);
         if (
           key !== dimensions.userData.car ||
           showDimensions !== next.dimensions
@@ -366,6 +371,18 @@ export default function CarViewport(props: Props) {
         setError(true);
       };
       renderer.domElement.addEventListener("webglcontextlost", lost);
+      show = createCarShow({
+        scene,
+        camera,
+        controls,
+        carRoot,
+        avatar,
+        arm,
+        host: host.current,
+        renderer,
+        reduced,
+      });
+      let lastTime = 0;
       function render(time: number) {
         frame = requestAnimationFrame(render);
         if (!visible || document.hidden) return;
@@ -380,6 +397,9 @@ export default function CarViewport(props: Props) {
           carRoot.traverse((child) => {
             if (child.userData.rotor) child.rotation.z = time * 0.002;
           });
+        const dt = Math.min((time - lastTime) / 1000, 0.05);
+        lastTime = time;
+        showActive = show?.update(dt, time) || false;
         grid.position.x = Math.round(controls.target.x / 20) * 20;
         grid.position.z = Math.round(controls.target.z / 20) * 20;
         ground.position.x = controls.target.x;
@@ -391,6 +411,7 @@ export default function CarViewport(props: Props) {
       frame = requestAnimationFrame(render);
       dispose = () => {
         cancelAnimationFrame(frame);
+        show?.dispose();
         resize.disconnect();
         visibility.disconnect();
         controls.dispose();
@@ -424,6 +445,8 @@ export default function CarViewport(props: Props) {
     props.busy,
     props.paused,
     props.runDrive,
+    props.assembleKey,
+    props.drive,
   ]);
   useEffect(() => {
     engine.current?.view(props.view);

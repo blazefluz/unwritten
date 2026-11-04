@@ -772,5 +772,53 @@
 }
 
 /* Keep the vehicle unobstructed while retaining the tool hierarchy. */
-.car-stage .ws-stage-heading h1 { font-size: 19px; letter-spacing: -.5px; margin: 6px 0; }
-.car-stage .ws-stage-heading p { display: none; }
+.car-stage .ws-stage-heading h1 {
+  font-size: 19px;
+  letter-spacing: -0.5px;
+  margin: 6px 0;
+}
+.car-stage .ws-stage-heading p {
+  display: none;
+}
+
+/* Test drive results */
+.car-drive-card {
+  bottom: 150px;
+}
+.car-drive-checks {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.car-drive-checks li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ws-muted);
+}
+.car-drive-checks li > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #2f6b45;
+}
+.car-drive-checks li[data-ok="false"] > svg {
+  color: #c93527;
+}
+.car-drive-checks strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ws-ink);
+}
+.car-assembly-toolbar .car-drive-button {
+  background: var(--ws-ink);
+  color: #fff;
+}
+.car-assembly-toolbar .car-drive-button[aria-pressed="true"] {
+  background: #fff;
+  color: var(--ws-ink);
+}
