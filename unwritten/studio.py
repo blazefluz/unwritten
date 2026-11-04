@@ -89,7 +89,9 @@ def propose_car(client, request):
 Build complete visual assemblies and create NEW parts, not just preset changes. Never return executable code.
 WORLD EXPANSION: newBays is an array of up to 6 new independent vehicle design bays, each with name and
 complete car configuration. Use it when asked to add spaces or compare multiple concepts. Preserve the
-current car unless asked to change it. Return newBays=[] for edits within the current bay. The world
+current car unless asked to change it. Always return the complete unchanged current_car in car
+when only adding bays; do not use car=null to mean no change. Null is only for an already empty bay.
+Return newBays=[] for edits within the current bay. The world
 supports 24 bays total; world_summary lists existing bays. Each new bay may contain your own new parts.
 Use current geometry and the user's request to plan coherent parts with clear functional purposes, then
 return the COMPLETE car configuration. Preserve every field and part the user did not ask to change.

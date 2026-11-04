@@ -29,12 +29,12 @@ import {
   EMPTY_CAR_DOCUMENT,
   carConfigSchema,
   carDocumentSchema,
-  carProposalSchema,
   localCarCommand,
   type CarConfig,
   type CarDocument,
 } from "@/lib/studio/car";
 import type { CarView } from "./car-viewport";
+import { normalizeCarProposal } from "@/lib/studio/car-proposal";
 import EngineeringPanel, { type EngineeringTab } from "./engineering-panel";
 import { evSchema, type EVConfig } from "@/lib/studio/ev";
 import {
@@ -324,7 +324,7 @@ export default function CarStudio() {
       const raw = await response.json();
       if (!response.ok)
         throw new Error(raw.error || "Meta could not finish this design.");
-      const proposal = carProposalSchema.parse(raw);
+      const proposal = normalizeCarProposal(raw, car);
       if (JSON.stringify(currentDocument.current) !== baseDocument)
         throw new Error(
           "The saved world changed in another tab while Muse was working. The response was not applied. Retry against the current design.",

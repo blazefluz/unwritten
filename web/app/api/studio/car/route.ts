@@ -4,10 +4,10 @@ import { runPython } from "@/lib/python";
 import {
   CAR_PRESETS,
   carConfigSchema,
-  carProposalSchema,
 } from "@/lib/studio/car";
 import { carResponseSchema } from "@/lib/studio/car-ai-schema";
 import { analyzeEV } from "@/lib/studio/ev";
+import { normalizeCarProposal } from "@/lib/studio/car-proposal";
 import { checkCreationResult } from "@/lib/studio/creation-check";
 import { generatedPartBounds } from "@/lib/studio/part-model";
 export const runtime = "nodejs";
@@ -28,7 +28,7 @@ const inputSchema = z.object({
     .optional(),
 });
 function validate(value: unknown, input: z.infer<typeof inputSchema>) {
-  const proposal = carProposalSchema.parse(value);
+  const proposal = normalizeCarProposal(value, input.car);
   checkCreationResult(
     input.car,
     proposal.car,

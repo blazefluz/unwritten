@@ -249,3 +249,42 @@ test("AI-authored bays preserve the current design and retain generated geometry
     ]),
   );
 });
+
+test("adding AI bays with a null current replacement cannot erase the original", async () => {
+  const { normalizeCarProposal } = await import("../lib/studio/car-proposal");
+  const { appendDesignBays } = await import("../lib/studio/world");
+  const original = synchronizeDocument(
+    carDocumentSchema.parse({ version: 1, type: "car", name: "Original", car }),
+  );
+  const proposal = normalizeCarProposal(
+    {
+      message: "Added an alternative",
+      car: null,
+      newBays: [
+        {
+          name: "Long range",
+          car: { ...car, ev: { ...car.ev, moduleCount: 15 } },
+        },
+      ],
+    },
+    car,
+  );
+  const result = appendDesignBays(
+    { ...original, car: proposal.car },
+    proposal.newBays,
+  );
+  assert.deepEqual(result.car, original.car);
+  assert.deepEqual(result.bays[0].car, original.car);
+  assert.equal(result.bays[1].car?.ev.moduleCount, 15);
+});
+test("null AI replies preserve occupied bays but do not fill an empty bay", async () => {
+  const { normalizeCarProposal } = await import("../lib/studio/car-proposal");
+  assert.deepEqual(
+    normalizeCarProposal({ message: "Please clarify", car: null }, car).car,
+    car,
+  );
+  assert.equal(
+    normalizeCarProposal({ message: "Please clarify", car: null }, null).car,
+    null,
+  );
+});
