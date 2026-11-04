@@ -7,8 +7,8 @@ export function createCarModel(car: CarConfig): THREE.Group {
   const { length: l, width: w, height: h, wheelRadius: r, wheelbase: wb } = car;
   const paint = new THREE.MeshPhysicalMaterial({
     color: car.color,
-    metalness: 0.45,
-    roughness: 0.26,
+    metalness: 0.22,
+    roughness: 0.34,
     clearcoat: 1,
     clearcoatRoughness: 0.2,
   });
@@ -70,115 +70,254 @@ export function createCarModel(car: CarConfig): THREE.Group {
     sz: number,
     mat: THREE.Material,
   ) => add(new THREE.BoxGeometry(sx, sy, sz), mat, x, y, z);
-  const belt = Math.max(r * 1.65, h * (car.style === "suv" ? 0.52 : 0.48));
-  const bottom = r * 0.65;
-  const body = new THREE.Shape();
-  body.moveTo(-l / 2 + 0.12, bottom);
-  body.lineTo(l / 2 - 0.12, bottom);
-  body.quadraticCurveTo(l / 2, bottom, l / 2, bottom + 0.15);
-  body.lineTo(l / 2, belt - 0.11);
-  body.quadraticCurveTo(l / 2, belt, l / 2 - 0.16, belt);
-  body.lineTo(-l / 2 + 0.16, belt);
-  body.quadraticCurveTo(-l / 2, belt, -l / 2, belt - 0.12);
-  body.lineTo(-l / 2, bottom + 0.13);
-  body.quadraticCurveTo(-l / 2, bottom, -l / 2 + 0.12, bottom);
-  const bodyMesh = add(
-    new THREE.ExtrudeGeometry(body, {
-      depth: w * 0.9,
-      bevelEnabled: false,
-      curveSegments: 12,
-    }),
-    paint,
-    0,
-    0,
-    -w * 0.45,
-  );
-  bodyMesh.name = "body";
-  const backBase = car.style === "suv" ? -l * 0.4 : -l * 0.29;
-  const backTop =
-    car.style === "suv"
-      ? -l * 0.35
-      : car.style === "sedan"
-        ? -l * 0.19
-        : -l * 0.15;
-  const frontTop = car.style === "coupe" ? l * 0.07 : l * 0.12;
-  const frontBase = l * 0.29;
-  const cabin = new THREE.Shape();
-  cabin.moveTo(backBase, belt);
-  cabin.lineTo(backTop, h - 0.08);
-  cabin.quadraticCurveTo(backTop + 0.02, h, backTop + 0.11, h);
-  cabin.lineTo(frontTop - 0.08, h);
-  cabin.quadraticCurveTo(frontTop, h, frontTop + 0.045, h - 0.09);
-  cabin.lineTo(frontBase, belt);
-  cabin.closePath();
-  const cabinDepth = w * 0.77;
-  add(
-    new THREE.ExtrudeGeometry(cabin, {
-      depth: cabinDepth,
-      bevelEnabled: false,
-      curveSegments: 16,
-    }),
-    glass,
-    0,
-    0,
-    -cabinDepth / 2,
-  ).name = "cabin";
-  box(
-    (backTop + frontTop) / 2,
-    h - 0.035,
-    0,
-    frontTop - backTop,
-    0.07,
-    cabinDepth + 0.035,
-    roof,
-  ).name = "roof";
-  // Painted pillars retain a visible silhouette around the dark glazing.
-  const pillar = (
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    z: number,
-  ) => {
-    const mesh = box(
-      (x1 + x2) / 2,
-      (y1 + y2) / 2,
-      z,
-      0.055,
-      Math.hypot(x2 - x1, y2 - y1),
-      0.035,
-      paint,
-    );
-    mesh.rotation.z = -Math.atan2(x2 - x1, y2 - y1);
-  };
-  for (const side of [-1, 1]) {
-    pillar(backBase, belt, backTop + 0.05, h - 0.02, (side * cabinDepth) / 2);
-    pillar(frontBase, belt, frontTop, h - 0.04, (side * cabinDepth) / 2);
-    if (car.style !== "coupe")
-      pillar(-0.04 * l, belt, -0.04 * l, h - 0.04, (side * cabinDepth) / 2);
-    box(
-      -l * 0.08,
-      belt - 0.1,
-      side * (w * 0.45 + 0.008),
-      0.19,
-      0.035,
-      0.02,
-      chrome,
-    );
-    box(0, bottom + 0.06, side * w * 0.455, l * 0.72, 0.045, 0.035, dark);
+  const belt = Math.max(r * 1.8, h * 0.49);
+  const bottom = r * 0.58;
+  // Loft a rounded shoulder across the length, with true open wheel cutouts.
+  const positions: number[] = [],
+    indices: number[] = [];
+  const rows = 120,
+    rings = 48;
+  for (let i = 0; i <= rows; i++) {
+    const t = i / rows,
+      x = (t - 0.5) * l;
+    const taper = 0.83 + 0.17 * Math.sin(Math.PI * t) ** 0.45;
+    const axleDistance = Math.min(Math.abs(x - wb / 2), Math.abs(x + wb / 2));
+    const arch =
+      axleDistance < r * 1.12
+        ? r + Math.sqrt((r * 1.12) ** 2 - axleDistance ** 2)
+        : bottom;
+    const shoulder = belt + 0.055 * Math.cos((x / l) * Math.PI);
+    for (let j = 0; j <= rings; j++) {
+      const angle = (j / rings) * Math.PI * 2;
+      const side = Math.sin(angle),
+        top = Math.cos(angle);
+      const sideHeight = Math.max(shoulder, arch + 0.035);
+      const y =
+        top >= 0
+          ? shoulder +
+            top * 0.045 +
+            (sideHeight - shoulder) * Math.abs(side) ** 6
+          : arch + (sideHeight - arch) * (1 - Math.abs(top) ** 0.35);
+      const z = Math.sign(side) * Math.abs(side) ** 0.35 * w * 0.5 * taper;
+      positions.push(x, y, z);
+      if (i < rows && j < rings) {
+        const k = i * (rings + 1) + j;
+        indices.push(
+          k,
+          k + rings + 1,
+          k + 1,
+          k + 1,
+          k + rings + 1,
+          k + rings + 2,
+        );
+      }
+    }
   }
+  for (let j = 1; j < rings - 1; j++) {
+    indices.push(0, j + 1, j);
+    const end = rows * (rings + 1);
+    indices.push(end, end + j, end + j + 1);
+  }
+  const bodyGeometry = new THREE.BufferGeometry();
+  bodyGeometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
+  bodyGeometry.setIndex(indices);
+  bodyGeometry.computeVertexNormals();
+  paint.side = THREE.DoubleSide;
+  add(bodyGeometry, paint, 0, 0, 0).name = "body";
+  const backBase = -l * (car.style === "suv" ? 0.4 : 0.33);
+  const backTop = -l * (car.style === "suv" ? 0.3 : 0.18);
+  const frontTop = l * 0.08,
+    frontBase = l * 0.28;
+  // Cross sections taper towards the roof rather than extruding flat side walls.
+  const sections = [
+    [backBase, belt + 0.015, w * 0.4],
+    [backTop, h * 0.96, w * 0.32],
+    [-l * 0.05, h, w * 0.33],
+    [frontTop, h * 0.97, w * 0.32],
+    [frontBase, belt + 0.025, w * 0.39],
+  ];
+  const cabinPoints: number[] = [],
+    cabinIndices: number[] = [];
+  for (const [x, y, half] of sections) {
+    for (let j = 0; j <= 24; j++) {
+      const u = (j / 24) * 2 - 1;
+      cabinPoints.push(x, y - 0.045 * u * u, half * u);
+    }
+  }
+  for (let i = 0; i < 4; i++)
+    for (let j = 0; j < 24; j++) {
+      const k = i * 25 + j;
+      cabinIndices.push(k, k + 1, k + 25, k + 1, k + 26, k + 25);
+    }
+  const glazing = new THREE.BufferGeometry();
+  glazing.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(cabinPoints, 3),
+  );
+  glazing.setIndex(cabinIndices);
+  glazing.computeVertexNormals();
+  glass.side = THREE.DoubleSide;
+  add(glazing, glass, 0, 0, 0).name = "cabin";
+  function seam(points: number[][], material = dark, radius = 0.008) {
+    const curve = new THREE.CatmullRomCurve3(
+      points.map((p) => new THREE.Vector3(...(p as [number, number, number]))),
+    );
+    const geometry = new THREE.TubeGeometry(curve, 40, radius, 6, false);
+    const vertices = geometry.getAttribute("position");
+    for (let i = 0; i < vertices.count; i++)
+      vertices.setX(i, THREE.MathUtils.clamp(vertices.getX(i), -l / 2, l / 2));
+    return add(geometry, material, 0, 0, 0);
+  }
+  for (const side of [-1, 1]) {
+    const outline = sections.map(([x, y, half]) => [x, y - 0.045, side * half]);
+    seam(outline, paint, 0.025);
+    // Side glass follows the roof taper; painted pillars and sill surround it.
+    const sideShape = new THREE.BufferGeometry();
+    const pts = [
+      [backBase, belt, side * w * 0.4],
+      [backTop, h * 0.96 - 0.045, side * w * 0.32],
+      [frontTop, h * 0.97 - 0.045, side * w * 0.32],
+      [frontBase, belt, side * w * 0.39],
+    ];
+    sideShape.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(pts.flat(), 3),
+    );
+    sideShape.setIndex([0, 1, 2, 0, 2, 3]);
+    sideShape.computeVertexNormals();
+    add(sideShape, glass, 0, 0, 0);
+    seam(
+      [
+        [backBase, belt, side * w * 0.4],
+        [frontBase, belt, side * w * 0.39],
+      ],
+      chrome,
+      0.012,
+    );
+    seam(
+      [
+        [-l * 0.07, belt, side * w * 0.397],
+        [-l * 0.07, h - 0.045, side * w * 0.33],
+      ],
+      dark,
+      0.022,
+    );
+    seam(
+      [
+        [frontBase, belt, side * w * 0.39],
+        [frontTop, h * 0.97 - 0.045, side * w * 0.32],
+      ],
+      paint,
+      0.028,
+    );
+    seam(
+      [
+        [backBase, belt, side * w * 0.4],
+        [backTop, h * 0.96 - 0.045, side * w * 0.32],
+      ],
+      paint,
+      0.04,
+    );
+    // Door shut line, recessed handle, rocker and sculpted mirror housing.
+    seam(
+      [
+        [l * 0.21, belt, side * w * 0.478],
+        [l * 0.2, bottom + 0.12, side * w * 0.478],
+        [-l * 0.2, bottom + 0.12, side * w * 0.478],
+        [-l * 0.21, belt, side * w * 0.478],
+      ],
+      dark,
+      0.006,
+    );
+    box(
+      -l * 0.12,
+      belt - 0.1,
+      side * w * 0.484,
+      0.16,
+      0.025,
+      0.018,
+      chrome,
+    ).name = "door-handle";
+    box(0, bottom + 0.02, side * w * 0.465, l * 0.55, 0.055, 0.055, dark);
+    seam(
+      [
+        [l * 0.19, belt + 0.08, side * w * 0.39],
+        [l * 0.18, belt + 0.13, side * w * 0.47],
+      ],
+      dark,
+      0.022,
+    );
+    const mirror = add(
+      new THREE.SphereGeometry(1, 24, 16),
+      paint,
+      l * 0.18,
+      belt + 0.15,
+      side * w * 0.473,
+    );
+    mirror.scale.set(0.13, 0.065, w * 0.027);
+    mirror.name = "mirror";
+    const reflective = add(
+      new THREE.SphereGeometry(1, 20, 12),
+      chrome,
+      l * 0.18 - 0.035,
+      belt + 0.15,
+      side * w * 0.475,
+    );
+    reflective.scale.set(0.095, 0.047, w * 0.028);
+    // Bonnet character lines and narrow wraparound LED signatures.
+    seam(
+      [
+        [l * 0.27, belt + 0.03, side * w * 0.26],
+        [l * 0.4, belt + 0.025, side * w * 0.29],
+        [l * 0.47, belt - 0.025, side * w * 0.3],
+      ],
+      paint,
+      0.009,
+    );
+    seam(
+      [
+        [l * 0.495, belt - 0.08, side * w * 0.16],
+        [l * 0.495, belt - 0.08, side * w * 0.32],
+        [l * 0.46, belt - 0.06, side * w * 0.39],
+      ],
+      lamp,
+      0.018,
+    );
+    seam(
+      [
+        [-l * 0.495, belt - 0.08, side * w * 0.12],
+        [-l * 0.495, belt - 0.08, side * w * 0.34],
+        [-l * 0.46, belt - 0.06, side * w * 0.39],
+      ],
+      rearLamp,
+      0.018,
+    );
+  }
+  // Painted roof insert leaves front and rear glazing exposed.
+  const roofPanel = add(
+    new THREE.SphereGeometry(1, 40, 20),
+    roof,
+    -l * 0.05,
+    h - 0.043,
+    0,
+  );
+  roofPanel.scale.set(l * 0.14, 0.043, w * 0.33);
+  roofPanel.name = "roof";
   const wheelStart = group.children.length;
   for (const x of [-wb / 2, wb / 2])
     for (const side of [-1, 1]) {
       const z = side * (w / 2 - 0.17);
       const tyre = add(
-        new THREE.CylinderGeometry(r, r, 0.23, 40),
+        new THREE.TorusGeometry(r * 0.79, r * 0.21, 16, 64),
         rubber,
         x,
         r,
         z,
       );
-      tyre.rotation.x = Math.PI / 2;
+      tyre.rotation.x = 0;
       tyre.name = "wheel";
       const faceZ = z + side * 0.118;
       const rim = add(
@@ -219,7 +358,8 @@ export function createCarModel(car: CarConfig): THREE.Group {
       );
       hub.rotation.x = Math.PI / 2;
     }
-  for (const child of group.children.slice(wheelStart)) child.userData.subsystem = "wheels";
+  for (const child of group.children.slice(wheelStart))
+    child.userData.subsystem = "wheels";
   for (const side of [-1, 1]) {
     box(l / 2 - 0.012, belt - 0.1, side * w * 0.3, 0.025, 0.07, w * 0.2, lamp);
     box(

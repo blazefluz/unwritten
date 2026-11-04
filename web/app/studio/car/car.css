@@ -770,3 +770,7 @@
   background: #314726;
   color: #fff;
 }
+
+/* Keep the vehicle unobstructed while retaining the tool hierarchy. */
+.car-stage .ws-stage-heading h1 { font-size: 19px; letter-spacing: -.5px; margin: 6px 0; }
+.car-stage .ws-stage-heading p { display: none; }

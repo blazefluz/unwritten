@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createCarModel, disposeCarGroup } from "@/lib/studio/car-model";
 import type { CarConfig, CarDocument } from "@/lib/studio/car";
@@ -36,9 +37,9 @@ export default function CarViewport(props: Props) {
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFShadowMap;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.15;
+      renderer.toneMappingExposure = 0.85;
       renderer.domElement.setAttribute("role", "img");
       renderer.domElement.setAttribute(
         "aria-label",
@@ -47,6 +48,12 @@ export default function CarViewport(props: Props) {
       renderer.domElement.tabIndex = 0;
       host.current.appendChild(renderer.domElement);
       const scene = new THREE.Scene();
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const room = new RoomEnvironment();
+      const environment = pmrem.fromScene(room, 0.04);
+      scene.environment = environment.texture;
+      room.dispose();
+      pmrem.dispose();
       scene.background = new THREE.Color("#e9eae6");
       const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 2000);
       camera.position.set(8, 5.4, 8);
@@ -57,8 +64,8 @@ export default function CarViewport(props: Props) {
       controls.maxDistance = 500;
       controls.maxPolarAngle = Math.PI / 2 - 0.02;
       controls.update();
-      scene.add(new THREE.HemisphereLight("#fff9ed", "#68737c", 2.4));
-      const sun = new THREE.DirectionalLight("#fff5e6", 4);
+      scene.add(new THREE.HemisphereLight("#ffffff", "#68737c", 1.2));
+      const sun = new THREE.DirectionalLight("#fff5e6", 2.5);
       sun.position.set(2, 9, 5);
       sun.castShadow = true;
       sun.shadow.mapSize.set(2048, 2048);
@@ -229,6 +236,7 @@ export default function CarViewport(props: Props) {
             const group = new THREE.Group();
             group.position.set(bay.x, 0, bay.z);
             group.userData.bayId = bay.id;
+            group.visible = next.view === "world" || isActive;
             carRoot.add(group);
             const bayLine = new THREE.LineSegments(
               new THREE.EdgesGeometry(new THREE.BoxGeometry(8, 0.01, 8)),
@@ -303,6 +311,11 @@ export default function CarViewport(props: Props) {
         }
       }
       function view(value: CarView) {
+        for (const group of carRoot.children)
+          group.visible =
+            value === "world" ||
+            group.userData.bayId === current.activeBayId ||
+            !current.bays.length;
         const active = current.bays.find((b) => b.id === current.activeBayId);
         const x = active?.x || 0,
           z = active?.z || 0;
@@ -328,7 +341,7 @@ export default function CarViewport(props: Props) {
           else if (value === "top") {
             camera.position.set(x, 13, z + 0.01);
             controls.maxPolarAngle = 0.02;
-          } else camera.position.set(x + 8, 6, z + 8);
+          } else camera.position.set(x + 6, 3.0, z + 6);
         }
         controls.update();
       }
@@ -385,6 +398,7 @@ export default function CarViewport(props: Props) {
         grid.geometry.dispose();
         (grid.material as THREE.Material).dispose();
         renderer.domElement.removeEventListener("webglcontextlost", lost);
+        environment.dispose();
         renderer.dispose();
         renderer.domElement.remove();
       };
