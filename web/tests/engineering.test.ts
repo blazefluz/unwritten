@@ -288,3 +288,9 @@ test("null AI replies preserve occupied bays but do not fill an empty bay", asyn
     null,
   );
 });
+
+test("preserving parts and forbidding new bays does not request geometry", async () => {
+  const { checkCreationResult } = await import("../lib/studio/creation-check");
+  assert.doesNotThrow(() => checkCreationResult(car, car,
+    'Evaluate this battery layout. Preserve all parts. Do not add bays.'));
+});

@@ -6,10 +6,11 @@ export function checkCreationResult(
   prompt: string,
   extraCars: (CarConfig | null)[] = [],
 ) {
+  const requested = prompt.replace(/\b(?:do not|don’t|don't|never)\s+(?:create|build|design|add|generate)\b[^.!?]*/gi, "");
   const creation =
-    /\b(create|build|design|add|generate)\b/i.test(prompt) &&
+    /\b(create|build|design|add|generate)\b/i.test(requested) &&
     /\b(parts?|ducts?|housings?|brackets?|meshes|mesh|assembly|panels?|vanes?|casings?)\b/i.test(
-      prompt,
+      requested,
     );
   if (!creation) return;
   const existing = new Set(before?.parts.map((p) => p.id) || []);
