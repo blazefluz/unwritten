@@ -236,7 +236,7 @@ Find candidates with YouTube search → **Filters → Creative Commons**.
 
 ## World Studio experiment
 
-A new branch experiment: enter a 3D room with an animated AI collaborator, create and edit catalog objects through Meta, and check placement in code. Run the existing web app and open **http://127.0.0.1:3040/studio**. Local editing works without a key; AI editing uses the server's Meta API credentials. See [setup, demo and limits](docs/world-studio.md). This is a spatial editor, not a physics optimizer.
+A new branch experiment: enter a 3D room with an animated AI collaborator, create and edit catalog objects through Meta, and check placement in code. Run the existing web app and open **http://127.0.0.1:3040/studio**. Local editing works without a key; AI editing uses the server's Meta API credentials. Switch to **Car design** at **http://127.0.0.1:3040/studio/car** to create a concept car and edit its dimensions, paint and proportions with Meta or local controls. The market and car designs save separately. The car workbench can author new geometry with Meta, display an electric drivetrain, compute explicit-assumption analytical estimates, and expand into independent design bays. See [setup, demo and limits](docs/world-studio.md). These are visual editors, not physics or engineering simulators.
 
 ## Tests
 

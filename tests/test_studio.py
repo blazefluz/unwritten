@@ -14,3 +14,16 @@ def test_studio_uses_structured_meta_interface_and_preserves_context():
             return {"message": "Move proposed", "actions": []}
     result = propose(FakeClient(), {"catalog": {}, "scene": {"objects": []}, "selectedId": "table-1", "prompt": "Move this left"})
     assert result == {"message": "Move proposed", "actions": []}
+
+
+def test_car_proposals_use_meta_json_and_keep_dimensions_as_data():
+    from unwritten.studio import CAR_SCHEMA, propose_car
+    class FakeClient:
+        def ask_json(self, prompt, schema, name, video=None):
+            assert name == "world_studio_car"
+            assert schema is CAR_SCHEMA
+            assert '"request": "Make it wider"' in prompt
+            assert "NOT engineering CAD" in prompt
+            assert "Preserve every field" in prompt
+            return {"message": "Please specify the width.", "car": None}
+    assert propose_car(FakeClient(), {"car": None, "presets": {}, "prompt": "Make it wider"})["car"] is None

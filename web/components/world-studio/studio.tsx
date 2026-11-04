@@ -56,6 +56,7 @@ import {
   type World,
 } from "@/lib/studio/scene";
 import type { ViewMode } from "./viewport";
+import SceneSwitch from "./scene-switch";
 const Viewport = dynamic(() => import("./viewport"), {
   ssr: false,
   loading: () => (
@@ -368,6 +369,7 @@ export default function WorldStudio() {
             <span className="ws-brand-dot">.</span>
           </span>
         </a>
+        <SceneSwitch current="market" />
         <div className="ws-project">
           <span className="ws-divider" />
           <label className="visually-hidden" htmlFor="ws-name">

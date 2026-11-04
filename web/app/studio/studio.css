@@ -1465,3 +1465,58 @@
     scroll-behavior: auto !important;
   }
 }
+.ws-scene-switch {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: #f1f3ee;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+.ws-scene-switch a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border-radius: 3px;
+  text-decoration: none;
+  font-size: 11px;
+  color: #66715c;
+  white-space: nowrap;
+}
+.ws-scene-switch a[aria-current="page"] {
+  background: #fff;
+  color: #293620;
+}
+.ws-scene-switch a:hover {
+  background: #e6eadf;
+}
+.ws-header:has(.ws-scene-switch) {
+  gap: 20px;
+}
+@media (max-width: 1200px) {
+  .ws-header:has(.ws-scene-switch) .ws-project {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  .ws-header:has(.ws-scene-switch) {
+    height: auto;
+    min-height: 104px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 10px;
+    padding-bottom: 9px;
+  }
+  .ws-scene-switch {
+    order: 3;
+    width: 100%;
+  }
+  .ws-scene-switch a {
+    flex: 1;
+  }
+  .ws-header:has(.ws-scene-switch) .ws-header-actions {
+    margin-left: auto;
+  }
+}

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start --hostname 127.0.0.1 --port 3040",
     "typecheck": "tsc --noEmit",
-    "test:studio": "tsx --test tests/studio.test.ts"
+    "test:studio": "tsx --test tests/studio.test.ts tests/car.test.ts tests/engineering.test.ts"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",
