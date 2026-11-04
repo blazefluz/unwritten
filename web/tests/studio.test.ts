@@ -14,6 +14,12 @@ import {
   proposalSchema,
   MARKET_REASONS,
 } from "../lib/studio/scene";
+import {
+  describeDay,
+  findPath,
+  simulateDay,
+  walkableGrid,
+} from "../lib/studio/shoppers";
 
 test("example layout has unique IDs, stays inside the room, and has no overlaps", () => {
   const example = marketWorld();
@@ -122,4 +128,61 @@ test("build reasons are optional, bounded, and scripted only for the example", (
   const scripted = localCommand(EMPTY_WORLD, "build a market", null);
   assert.ok(scripted.actions.every((a) => a.type === "add" && a.reason));
   assert.ok(marketWorld().objects.every((o) => MARKET_REASONS[o.label]));
+});
+test("shoppers reach the example market, buy and pay at the counter", () => {
+  const day = simulateDay(marketWorld());
+  assert.equal(day.stats.visitors, 12);
+  assert.equal(day.stats.gaveUp, 0);
+  assert.ok(day.stats.bought > 0);
+  assert.deepEqual(day.stats.blocked, []);
+  for (const s of day.shoppers) {
+    const ts = s.keyframes.map((k) => k.t);
+    assert.deepEqual(
+      ts,
+      [...ts].sort((a, b) => a - b),
+    );
+    if (s.outcome === "bought") assert.ok(s.paidAt! >= s.pickedAt!);
+  }
+  assert.deepEqual(
+    simulateDay(marketWorld(), 12, 3),
+    simulateDay(marketWorld(), 12, 3),
+  );
+});
+test("shopper paths never cross furniture footprints", () => {
+  const world = {
+    ...EMPTY_WORLD,
+    objects: [{ ...makeObject("partition", 0, 0), scale: 2 }],
+  };
+  const path = findPath(world, { x: 0, z: 4.5 }, { x: 0, z: -4.5 })!;
+  assert.ok(path.length > 2);
+  const free = walkableGrid(world);
+  assert.ok(free.some(Boolean));
+  for (let k = 1; k < path.length; k++)
+    for (let u = 0; u <= 1; u += 0.05) {
+      const x = path[k - 1].x + (path[k].x - path[k - 1].x) * u;
+      const z = path[k - 1].z + (path[k].z - path[k - 1].z) * u;
+      assert.ok(!(Math.abs(x) < 2.4 && Math.abs(z) < 0.65), `${x},${z}`);
+    }
+});
+test("a walled-off entrance and a missing counter show up in the results", () => {
+  const market = marketWorld();
+  const walled = {
+    ...market,
+    objects: [
+      ...market.objects,
+      ...[-4.8, -2.4, 0, 2.4, 4.8].map((x) => makeObject("partition", x, 4.6)),
+    ],
+  };
+  const blocked = simulateDay(walled);
+  assert.equal(blocked.stats.gaveUp, 12);
+  assert.equal(blocked.stats.bought, 0);
+  assert.match(describeDay(blocked), /gave up/);
+  const noCounter = {
+    ...market,
+    objects: market.objects.filter((o) => o.kind !== "counter"),
+  };
+  const unpaid = simulateDay(noCounter);
+  assert.equal(unpaid.stats.bought, 0);
+  assert.ok(unpaid.stats.noCheckout > 0);
+  assert.match(describeDay(unpaid), /no display counter/);
 });

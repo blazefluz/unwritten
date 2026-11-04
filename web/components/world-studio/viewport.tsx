@@ -9,6 +9,7 @@ import {
   type SceneObject,
   type World,
 } from "@/lib/studio/scene";
+import { shopperAt, type DayResult } from "@/lib/studio/shoppers";
 
 export type ViewMode = "orbit" | "top" | "walk";
 type Props = {
@@ -28,7 +29,17 @@ type Props = {
   onMove?: (id: string, x: number, z: number) => void;
   /** One-line reasons, by object id, spoken while the avatar builds. */
   reasons?: Record<string, string>;
+  /** A simulated shop day to play back; a new object restarts playback. */
+  day?: DayResult | null;
+  onDayTick?: (tick: DayTick) => void;
 };
+export type DayTick = {
+  inside: number;
+  arrived: number;
+  sold: number;
+  done: boolean;
+};
+const DAY_SPEED = 2.2; // simulated seconds per real second
 export type BuildProgress = {
   label: string;
   done: number;
@@ -702,8 +713,72 @@ function createEngine(
     buildTotal = buildDone = workTime = 0;
     reportBuild();
   }
+  // Shop day playback: simple procedural shoppers following precomputed plans.
+  const crowd = new THREE.Group();
+  scene.add(crowd);
+  let playing: DayResult | null = null,
+    dayClock = 0,
+    lastTick = "";
+  const skin = ["#e2b58f", "#a8714f", "#f0cdb0", "#6f4a35"];
+  function startDay(day: DayResult | null) {
+    disposeGroup(crowd);
+    playing = day;
+    dayClock = 0;
+    lastTick = "";
+    if (!day) return;
+    for (const plan of day.shoppers) {
+      const person = new THREE.Group();
+      cylinder(person, 0.15, 0.2, 0.75, [0, 0.72, 0], material(plan.color), 12);
+      cylinder(person, 0.06, 0.06, 0.36, [0, 0.18, 0], material("#2f3433"), 8);
+      sphere(person, 0.14, [0, 1.25, 0], material(skin[plan.id % skin.length]));
+      const bag = box(
+        person,
+        [0.22, 0.24, 0.1],
+        [0.24, 0.62, 0.05],
+        material("#ff682b"),
+      );
+      bag.name = "bag";
+      bag.visible = false;
+      person.visible = false;
+      person.userData.plan = plan;
+      crowd.add(person);
+    }
+  }
+  function playDay(dt: number) {
+    if (!playing) return;
+    if (!props.paused) dayClock += dt * DAY_SPEED;
+    let inside = 0,
+      arrived = 0,
+      sold = 0;
+    for (const person of crowd.children) {
+      const plan = person.userData.plan as DayResult["shoppers"][number];
+      if (dayClock >= plan.keyframes[0].t) arrived += 1;
+      if (plan.paidAt !== null && dayClock >= plan.paidAt) sold += 1;
+      const at = shopperAt(plan, dayClock);
+      person.visible = Boolean(at);
+      if (!at) continue;
+      inside += 1;
+      person.position.set(at.x, 0, at.z);
+      if (at.moving) person.rotation.y = at.heading;
+      person.position.y = at.moving
+        ? Math.abs(Math.sin(dayClock * 7 + plan.id)) * 0.035
+        : 0;
+      person.getObjectByName("bag")!.visible = at.carrying;
+    }
+    const done = dayClock > playing.duration;
+    const tick = `${inside}|${arrived}|${sold}|${done}`;
+    if (tick !== lastTick) {
+      lastTick = tick;
+      props.onDayTick?.({ inside, arrived, sold, done });
+    }
+    if (done) playing = null;
+  }
   function sync(next: Props) {
+    const dayChanged =
+      next.day !== props.day ||
+      (next.day && !playing && !crowd.children.length);
     props = next;
+    if (dayChanged) startDay(props.day || null);
     const night = props.world.lighting === "night";
     scene.background = new THREE.Color(night ? "#222d35" : "#eeeeeb");
     ambient.intensity = night ? 1 : 2.7;
@@ -884,6 +959,7 @@ function createEngine(
       head.position.y = 1.4 + Math.sin(t * 2) * 0.012;
       body.position.y = 0.88 + Math.sin(t * 2) * 0.007;
     }
+    playDay(dt);
     const speaking = buildQueue[0]?.reason;
     if (speaking) speak(speaking);
     else if (bubbleLinger > 0) bubbleLinger -= dt;
@@ -926,7 +1002,7 @@ function createEngine(
       window.removeEventListener("keyup", keyUp);
       renderer.domElement.removeEventListener("blur", blur);
       renderer.domElement.removeEventListener("webglcontextlost", contextLost);
-      [objects, overlay, dragOverlay, room, robot].forEach(disposeGroup);
+      [objects, overlay, dragOverlay, crowd, room, robot].forEach(disposeGroup);
       grid.geometry.dispose();
       (grid.material as THREE.Material).dispose();
       renderer.dispose();
@@ -964,6 +1040,7 @@ export default function Viewport(props: Props) {
     props.busy,
     props.paused,
     props.issueIds,
+    props.day,
   ]);
   useEffect(() => {
     engine.current?.setView(props.view);

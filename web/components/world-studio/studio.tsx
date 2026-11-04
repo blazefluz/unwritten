@@ -30,6 +30,7 @@ import {
   Plus,
   RotateCw,
   Sparkles,
+  Store,
   Sun,
   Trash2,
   Undo2,
@@ -56,7 +57,12 @@ import {
   type SceneObject,
   type World,
 } from "@/lib/studio/scene";
-import type { BuildProgress, ViewMode } from "./viewport";
+import type { BuildProgress, DayTick, ViewMode } from "./viewport";
+import {
+  describeDay,
+  simulateDay,
+  type DayResult,
+} from "@/lib/studio/shoppers";
 import SceneSwitch from "./scene-switch";
 const Viewport = dynamic(() => import("./viewport"), {
   ssr: false,
@@ -126,7 +132,10 @@ export default function WorldStudio() {
     [paused, setPaused] = useState(false),
     [building, setBuilding] = useState<BuildProgress | null>(null),
     [choreograph, setChoreograph] = useState(true),
-    [reasons, setReasons] = useState<Record<string, string>>({});
+    [reasons, setReasons] = useState<Record<string, string>>({}),
+    [day, setDay] = useState<DayResult | null>(null),
+    [dayTick, setDayTick] = useState<DayTick | null>(null),
+    [dayRuns, setDayRuns] = useState(0);
   const [loaded, setLoaded] = useState(false),
     [panel, setPanel] = useState<"objects" | "chat">("chat");
   const log = useRef<HTMLDivElement>(null),
@@ -137,6 +146,40 @@ export default function WorldStudio() {
     currentWorld = useRef(world);
   const selected = world.objects.find((o) => o.id === selectedId);
   currentWorld.current = world;
+  // Any scene change ends the current shop day: its results describe the old layout.
+  const dayWorld = useRef<World | null>(null);
+  useEffect(() => {
+    if (day && dayWorld.current !== world) {
+      setDay(null);
+      setDayTick(null);
+    }
+  }, [world, day]);
+  function openShop() {
+    if (busy || pending) return;
+    setSelected(null);
+    dayWorld.current = currentWorld.current;
+    const result = simulateDay(currentWorld.current, 12, 7 + dayRuns);
+    setDayRuns((n) => n + 1);
+    setDayTick(null);
+    setDay(result);
+    setNotice("The shop is open. Shoppers are simulated in code, not AI.");
+  }
+  function closeShop() {
+    setDay(null);
+    setDayTick(null);
+  }
+  function improveFromDay(result: DayResult) {
+    const text = `Shoppers just tested this market (simulated in code). ${describeDay(result)} Rearrange the layout so every shopper can reach the merchandise and pay at the counter. Keep the existing objects where possible.`;
+    closeShop();
+    if (mode === "meta" && ready) void submit(undefined, text);
+    else {
+      setPrompt(text);
+      setError(
+        "Improving a layout from the shop results needs Meta AI. Switch Editing with to Meta, then send.",
+      );
+      input.current?.focus();
+    }
+  }
   const addMessage = useCallback(
     (message: Message) => setMessages((old) => [...old.slice(-39), message]),
     [],
@@ -685,25 +728,38 @@ export default function WorldStudio() {
                   : "An empty room. A collaborator. Your next idea."}
               </p>
             </div>
-            <div className="ws-light-control">
+            <div className="ws-stage-actions">
               <button
-                title="Daylight"
-                aria-label="Daylight"
-                aria-pressed={world.lighting === "day"}
-                disabled={locked}
-                onClick={() => commit({ ...world, lighting: "day" })}
+                className="ws-shop-button"
+                aria-pressed={Boolean(day && !dayTick?.done)}
+                disabled={locked || (!day && !world.objects.length)}
+                onClick={() =>
+                  day && !dayTick?.done ? closeShop() : openShop()
+                }
               >
-                <Sun size={17} />
+                <Store size={16} />
+                {day && !dayTick?.done ? "Close shop" : "Open shop"}
               </button>
-              <button
-                title="Night lighting"
-                aria-label="Night lighting"
-                aria-pressed={world.lighting === "night"}
-                disabled={locked}
-                onClick={() => commit({ ...world, lighting: "night" })}
-              >
-                <Moon size={17} />
-              </button>
+              <div className="ws-light-control">
+                <button
+                  title="Daylight"
+                  aria-label="Daylight"
+                  aria-pressed={world.lighting === "day"}
+                  disabled={locked}
+                  onClick={() => commit({ ...world, lighting: "day" })}
+                >
+                  <Sun size={17} />
+                </button>
+                <button
+                  title="Night lighting"
+                  aria-label="Night lighting"
+                  aria-pressed={world.lighting === "night"}
+                  disabled={locked}
+                  onClick={() => commit({ ...world, lighting: "night" })}
+                >
+                  <Moon size={17} />
+                </button>
+              </div>
             </div>
           </div>
           <Viewport
@@ -718,6 +774,8 @@ export default function WorldStudio() {
             onBuild={setBuilding}
             choreograph={choreograph}
             reasons={reasons}
+            day={day}
+            onDayTick={setDayTick}
             editable={!locked}
             onMove={(id, x, z) => {
               const object = currentWorld.current.objects.find(
@@ -729,13 +787,15 @@ export default function WorldStudio() {
           <div className="ws-stage-note">
             <span className="ws-avatar-marker" />
             <span>
-              {busy
-                ? "Muse is considering your space…"
-                : building
-                  ? `Muse is building ${building.label.toLowerCase()} · ${building.done + 1} of ${building.total}`
-                  : selected
-                    ? `Muse is beside ${selected.label.toLowerCase()}`
-                    : "Muse is here to build with you"}
+              {day && !dayTick?.done
+                ? `Shop open · ${dayTick?.inside ?? 0} inside · ${dayTick?.arrived ?? 0} of ${day.stats.visitors} arrived · ${dayTick?.sold ?? 0} sold`
+                : busy
+                  ? "Muse is considering your space…"
+                  : building
+                    ? `Muse is building ${building.label.toLowerCase()} · ${building.done + 1} of ${building.total}`
+                    : selected
+                      ? `Muse is beside ${selected.label.toLowerCase()}`
+                      : "Muse is here to build with you"}
               {building?.reason && !busy && (
                 <span className="visually-hidden">. {building.reason}</span>
               )}
@@ -846,7 +906,55 @@ export default function WorldStudio() {
               </div>
             </div>
           )}
-          {selected && !pending && (
+          {day && dayTick?.done && !pending && (
+            <div className="ws-day-card" role="status">
+              <div>
+                <Store size={18} />
+                <strong>
+                  {day.stats.bought} of {day.stats.visitors} shoppers bought
+                  something
+                </strong>
+                <button
+                  className="ws-icon-button"
+                  aria-label="Close shop results"
+                  onClick={closeShop}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <dl>
+                <div>
+                  <dt>Bought</dt>
+                  <dd>{day.stats.bought}</dd>
+                </div>
+                <div>
+                  <dt>Only browsed</dt>
+                  <dd>{day.stats.browsedOnly}</dd>
+                </div>
+                <div>
+                  <dt>Couldn’t pay</dt>
+                  <dd>{day.stats.noCheckout}</dd>
+                </div>
+                <div>
+                  <dt>Gave up</dt>
+                  <dd>{day.stats.gaveUp}</dd>
+                </div>
+              </dl>
+              <p>{describeDay(day)}</p>
+              <span>
+                Shoppers are simulated in code. Same layout, same seed, same
+                result.
+              </span>
+              <div className="ws-conflict-actions">
+                <button onClick={() => improveFromDay(day)}>
+                  Ask Muse to improve
+                  <Sparkles size={15} />
+                </button>
+                <button onClick={openShop}>Run another day</button>
+              </div>
+            </div>
+          )}
+          {selected && !pending && !(day && dayTick?.done) && (
             <div className="ws-inspector">
               <div className="ws-inspector-title">
                 <div>
