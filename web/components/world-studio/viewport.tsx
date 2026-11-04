@@ -9,7 +9,12 @@ import {
   type SceneObject,
   type World,
 } from "@/lib/studio/scene";
-import { shopperAt, type DayResult } from "@/lib/studio/shoppers";
+import {
+  findPath,
+  shopperAt,
+  walkableGrid,
+  type DayResult,
+} from "@/lib/studio/shoppers";
 
 export type ViewMode = "orbit" | "top" | "walk";
 type Props = {
@@ -713,6 +718,19 @@ function createEngine(
     buildTotal = buildDone = workTime = 0;
     reportBuild();
   }
+  // The avatar walks around furniture on the same floor grid the shoppers use.
+  let walkGrid: Uint8Array | null = null,
+    route: THREE.Vector3[] = [];
+  const routeGoal = new THREE.Vector3(Infinity, 0, 0);
+  function planRoute() {
+    routeGoal.copy(target);
+    walkGrid ||= walkableGrid(props.world);
+    const path = findPath(props.world, robot.position, target, walkGrid, true);
+    // Drop the start cell; finish exactly on the target, not its cell centre.
+    route = (path || [])
+      .slice(1, -1)
+      .map((p) => new THREE.Vector3(p.x, 0, p.z));
+  }
   // Shop day playback: simple procedural shoppers following precomputed plans.
   const crowd = new THREE.Group();
   scene.add(crowd);
@@ -826,6 +844,8 @@ function createEngine(
       buildTotal = buildQueue.length;
       buildDone = workTime = 0;
       lastWorld = props.world;
+      walkGrid = null;
+      routeGoal.set(Infinity, 0, 0);
       reportBuild();
     }
     if (resetDragged) {
@@ -904,17 +924,29 @@ function createEngine(
     const job = buildQueue[0];
     if (job) beside(job.object, target);
     else target.copy(restTarget);
+    if (!target.equals(routeGoal)) planRoute();
+    const waypoint = route[0] || target;
     const distance = robot.position.distanceTo(target);
     const moving = distance > 0.05;
     let working = false;
-    if (reduced.matches) robot.position.copy(target);
-    else if (!props.paused && job) {
-      // Walk at a steady pace between build sites; long queues hurry up.
-      const step = dt * Math.min(9, 3.5 + buildQueue.length * 0.4);
-      if (distance > step)
+    // Walk at a steady pace; long build queues hurry up.
+    const step = dt * (job ? Math.min(9, 3.5 + buildQueue.length * 0.4) : 2.4);
+    const advance = () => {
+      const gap = robot.position.distanceTo(waypoint);
+      if (gap > step)
         robot.position.add(
-          delta.subVectors(target, robot.position).setLength(step),
+          delta.subVectors(waypoint, robot.position).setLength(step),
         );
+      else {
+        robot.position.copy(waypoint);
+        if (route.length) route.shift();
+      }
+    };
+    if (reduced.matches) {
+      robot.position.copy(target);
+      route = [];
+    } else if (!props.paused && job) {
+      if (route.length || distance > step) advance();
       else {
         robot.position.copy(target);
         working = true;
@@ -929,8 +961,7 @@ function createEngine(
           reportBuild();
         }
       }
-    } else if (!props.paused)
-      robot.position.lerp(target, Math.min(1, dt * 1.8));
+    } else if (!props.paused && moving) advance();
     if (!reduced.matches && !props.paused) {
       if (working)
         robot.rotation.y = Math.atan2(
@@ -939,8 +970,8 @@ function createEngine(
         );
       else if (moving)
         robot.rotation.y = Math.atan2(
-          target.x - robot.position.x,
-          target.z - robot.position.z,
+          waypoint.x - robot.position.x,
+          waypoint.z - robot.position.z,
         );
       else robot.rotation.y += (0.3 - robot.rotation.y) * dt * 2;
       const t = time / 1000;

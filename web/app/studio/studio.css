@@ -1661,3 +1661,16 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+.ws-day-compare {
+  font-weight: 550;
+  color: #2f6b45;
+  background: #eaf4ec;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.ws-day-card dd s {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ws-muted);
+  margin-right: 5px;
+}

@@ -135,7 +135,11 @@ export default function WorldStudio() {
     [reasons, setReasons] = useState<Record<string, string>>({}),
     [day, setDay] = useState<DayResult | null>(null),
     [dayTick, setDayTick] = useState<DayTick | null>(null),
-    [dayRuns, setDayRuns] = useState(0);
+    [dayRuns, setDayRuns] = useState(0),
+    [baseline, setBaseline] = useState<{
+      stats: DayResult["stats"];
+      seed: number;
+    } | null>(null);
   const [loaded, setLoaded] = useState(false),
     [panel, setPanel] = useState<"objects" | "chat">("chat");
   const log = useRef<HTMLDivElement>(null),
@@ -154,11 +158,15 @@ export default function WorldStudio() {
       setDayTick(null);
     }
   }, [world, day]);
-  function openShop() {
+  // Seed of the day on screen, so a rerun after Muse's fix meets the same shoppers.
+  const daySeed = useRef(7);
+  function openShop(seed?: number) {
     if (busy || pending) return;
+    if (seed === undefined) setBaseline(null);
     setSelected(null);
     dayWorld.current = currentWorld.current;
-    const result = simulateDay(currentWorld.current, 12, 7 + dayRuns);
+    daySeed.current = seed ?? 7 + dayRuns;
+    const result = simulateDay(currentWorld.current, 12, daySeed.current);
     setDayRuns((n) => n + 1);
     setDayTick(null);
     setDay(result);
@@ -168,11 +176,33 @@ export default function WorldStudio() {
     setDay(null);
     setDayTick(null);
   }
+  // After "Ask Muse to improve": once Muse's rebuild has been committed and the
+  // avatar has finished building it, reopen the shop with the same shoppers.
+  const improving = useRef<{ world: World; seed: number } | null>(null),
+    buildingNow = useRef<BuildProgress | null>(null);
+  useEffect(() => {
+    const wait = improving.current;
+    if (!wait || busy || pending) return;
+    if (world === wait.world) {
+      improving.current = null; // Muse proposed nothing, or the request failed.
+      setBaseline(null);
+      return;
+    }
+    if (buildingNow.current || building) return;
+    improving.current = null;
+    openShop(wait.seed);
+  });
   function improveFromDay(result: DayResult) {
     const text = `Shoppers just tested this market (simulated in code). ${describeDay(result)} Rearrange the layout so every shopper can reach the merchandise and pay at the counter. Keep the existing objects where possible.`;
     closeShop();
-    if (mode === "meta" && ready) void submit(undefined, text);
-    else {
+    if (mode === "meta" && ready) {
+      setBaseline({ stats: result.stats, seed: daySeed.current });
+      improving.current = {
+        world: currentWorld.current,
+        seed: daySeed.current,
+      };
+      void submit(undefined, text);
+    } else {
       setPrompt(text);
       setError(
         "Improving a layout from the shop results needs Meta AI. Switch Editing with to Meta, then send.",
@@ -771,7 +801,10 @@ export default function WorldStudio() {
             paused={paused}
             view={view}
             onSelect={setSelected}
-            onBuild={setBuilding}
+            onBuild={(progress) => {
+              buildingNow.current = progress;
+              setBuilding(progress);
+            }}
             choreograph={choreograph}
             reasons={reasons}
             day={day}
@@ -917,28 +950,40 @@ export default function WorldStudio() {
                 <button
                   className="ws-icon-button"
                   aria-label="Close shop results"
-                  onClick={closeShop}
+                  onClick={() => {
+                    closeShop();
+                    setBaseline(null);
+                  }}
                 >
                   <X size={16} />
                 </button>
               </div>
+              {baseline && (
+                <p className="ws-day-compare">
+                  After Muse’s changes, with the same shoppers: sales{" "}
+                  {baseline.stats.bought} → {day.stats.bought}, gave up{" "}
+                  {baseline.stats.gaveUp} → {day.stats.gaveUp}.
+                </p>
+              )}
               <dl>
-                <div>
-                  <dt>Bought</dt>
-                  <dd>{day.stats.bought}</dd>
-                </div>
-                <div>
-                  <dt>Only browsed</dt>
-                  <dd>{day.stats.browsedOnly}</dd>
-                </div>
-                <div>
-                  <dt>Couldn’t pay</dt>
-                  <dd>{day.stats.noCheckout}</dd>
-                </div>
-                <div>
-                  <dt>Gave up</dt>
-                  <dd>{day.stats.gaveUp}</dd>
-                </div>
+                {(
+                  [
+                    ["Bought", "bought"],
+                    ["Only browsed", "browsedOnly"],
+                    ["Couldn’t pay", "noCheckout"],
+                    ["Gave up", "gaveUp"],
+                  ] as const
+                ).map(([label, key]) => (
+                  <div key={key}>
+                    <dt>{label}</dt>
+                    <dd>
+                      {baseline && baseline.stats[key] !== day.stats[key] && (
+                        <s>{baseline.stats[key]}</s>
+                      )}
+                      {day.stats[key]}
+                    </dd>
+                  </div>
+                ))}
               </dl>
               <p>{describeDay(day)}</p>
               <span>
@@ -950,7 +995,7 @@ export default function WorldStudio() {
                   Ask Muse to improve
                   <Sparkles size={15} />
                 </button>
-                <button onClick={openShop}>Run another day</button>
+                <button onClick={() => openShop()}>Run another day</button>
               </div>
             </div>
           )}

@@ -186,3 +186,16 @@ test("a walled-off entrance and a missing counter show up in the results", () =>
   assert.ok(unpaid.stats.noCheckout > 0);
   assert.match(describeDay(unpaid), /no display counter/);
 });
+test("paths can start inside furniture when snapping to the nearest free floor", () => {
+  const world = { ...EMPTY_WORLD, objects: [makeObject("table", 0, 0)] };
+  assert.equal(findPath(world, { x: 0, z: 0 }, { x: 4, z: 3 }), null);
+  const path = findPath(
+    world,
+    { x: 0, z: 0 },
+    { x: 4, z: 3 },
+    walkableGrid(world),
+    true,
+  )!;
+  assert.ok(path.length >= 2);
+  assert.ok(Math.hypot(path.at(-1)!.x - 4, path.at(-1)!.z - 3) < 0.3);
+});

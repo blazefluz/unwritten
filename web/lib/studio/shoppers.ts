@@ -163,9 +163,12 @@ export function findPath(
   a: { x: number; z: number },
   b: { x: number; z: number },
   free = walkableGrid(world),
+  /** Start and end at the nearest walkable cell if a point is inside furniture. */
+  snap = false,
 ): { x: number; z: number }[] | null {
-  const start = cellAt(a.x, a.z),
-    goal = cellAt(b.x, b.z);
+  const start = snap ? nearestFree(a, free) : cellAt(a.x, a.z),
+    goal = snap ? nearestFree(b, free) : cellAt(b.x, b.z);
+  if (start < 0 || goal < 0) return null;
   const { dist, from } = distanceField(goal, free);
   if (!Number.isFinite(dist[start])) return null;
   const cells: Cell[] = [start];
@@ -184,6 +187,23 @@ export function findPath(
       Math.sign(p.z - prev.z) !== Math.sign(next.z - p.z)
     );
   });
+}
+
+function nearestFree(p: { x: number; z: number }, free: Uint8Array): Cell {
+  const own = cellAt(p.x, p.z);
+  if (free[own]) return own;
+  let best = -1,
+    bestD = Infinity;
+  for (let c = 0; c < free.length; c++) {
+    if (!free[c]) continue;
+    const d =
+      (cellX(c % NX) - p.x) ** 2 + (cellZ(Math.floor(c / NX)) - p.z) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = c;
+    }
+  }
+  return best;
 }
 
 /** Where a shopper stands to use an object, if they can get there at all. */
