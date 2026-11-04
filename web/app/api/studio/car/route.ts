@@ -11,7 +11,7 @@ import { normalizeCarProposal } from "@/lib/studio/car-proposal";
 import { checkCreationResult } from "@/lib/studio/creation-check";
 import { generatedPartBounds } from "@/lib/studio/part-model";
 export const runtime = "nodejs";
-export const maxDuration = 240;
+export const maxDuration = 300;
 const inputSchema = z.object({
   prompt: z.string().trim().min(1).max(2000),
   car: carConfigSchema.nullable(),
@@ -83,23 +83,44 @@ export async function POST(request: Request) {
       responseSchema: carResponseSchema(),
       analysis: input.car ? analyzeEV(input.car) : null,
     };
-    const result = await runPython(payload);
-    try {
-      return Response.json({ ...validate(result, input), revised: false });
-    } catch (error) {
-      const feedback =
-        error instanceof z.ZodError
-          ? error.issues
-              .slice(0, 8)
-              .map((i) => ({ path: i.path, message: i.message }))
-          : String(error);
-      const revision = await runPython({
-        ...payload,
-        validationFeedback: feedback,
-        previousProposal: result,
+    const attempts: { attempt: number; failures: string[] }[] = [];
+    let previous: unknown;
+    let feedback: unknown;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const result = await runPython({ ...payload,
+        ...(attempt > 1 ? { previousProposal: previous, validationFeedback: feedback } : {}),
       });
-      return Response.json({ ...validate(revision, input), revised: true });
+      try {
+        const proposal = validate(result, input);
+        const designs = [
+          ...(proposal.car ? [{ name: "Current bay", car: proposal.car }] : []),
+          ...proposal.newBays,
+        ];
+        const failures = designs.flatMap(({ name, car }) =>
+          (car ? analyzeEV(car).checks : []).filter(c => !c.ok)
+            .map(c => `${name}: ${c.label}: ${c.detail}`));
+        attempts.push({ attempt, failures });
+        if (failures.length && attempt < 3) {
+          previous = result; feedback = failures; continue;
+        }
+        const history = attempts.map(a => `Attempt ${a.attempt}: ${a.failures.length ? a.failures.join("; ") : "all listed analytical checks pass"}`).join("\n");
+        return Response.json({ ...proposal,
+          message: `${proposal.message.slice(0, 600)}\n\n${history}`.slice(0, 1500),
+          revised: attempt > 1, attempts,
+          checksPassed: failures.length === 0,
+        });
+      } catch (error) {
+        const failures = [error instanceof z.ZodError
+          ? error.issues.slice(0, 8).map(i => `${i.path.join(".")}: ${i.message}`).join("; ")
+          : String(error)];
+        attempts.push({ attempt, failures });
+        previous = result; feedback = failures;
+        if (attempt === 3) return Response.json({
+          error: "Muse could not produce a valid design after three attempts. Your saved design is unchanged.", attempts,
+        }, { status: 422 });
+      }
     }
+
   } catch (error) {
     return Response.json(
       {

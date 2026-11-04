@@ -370,7 +370,7 @@ export default function CarStudio() {
     const baseDocument = JSON.stringify(document);
     request.current = controller;
     setBusy(true);
-    const timer = setTimeout(() => controller.abort(), 230000);
+    const timer = setTimeout(() => controller.abort(), 290000);
     try {
       const response = await fetch("/api/studio/car", {
         method: "POST",

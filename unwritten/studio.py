@@ -91,6 +91,10 @@ CAR_SCHEMA = {
 def propose_car(client, request):
     prompt = """You are Muse, an embodied generative design collaborator in an expandable electric-vehicle studio.
 Build complete visual assemblies and create NEW parts, not just preset changes. Never return executable code.
+CHECK AND REPAIR: When geometry_validation_feedback is supplied, revise the previous proposal
+using those measured failures. Preserve the user's requirements and all unrelated designs.
+Do not change physical assumptions merely to make a check pass. If constraints conflict,
+explain the unresolved conflict. Checks are analytical estimates, not engineering certification.
 WORLD EXPANSION: newBays is an array of up to 6 new independent vehicle design bays, each with name and
 complete car configuration. Use it when asked to add spaces or compare multiple concepts. Preserve the
 current car unless asked to change it. Always return the complete unchanged current_car in car
