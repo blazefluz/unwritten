@@ -10,6 +10,9 @@ from .workflow import analyze, load_references, load_transcript
 
 
 def run(request):
+    if request.get("operation") == "studio":
+        from .studio import propose
+        return propose(MetaClient(max_output_tokens=8000, timeout=90, max_retries=1), request)
     if request.get("operation") == "training":
         from . import training
         store = Path(__file__).resolve().parents[1] / ".unwritten-runs" / "training"

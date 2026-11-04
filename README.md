@@ -234,6 +234,10 @@ python -m unwritten fetch "https://www.youtube.com/watch?v=..." --start 30 --end
 
 Find candidates with YouTube search → **Filters → Creative Commons**.
 
+## World Studio experiment
+
+A new branch experiment: enter a 3D room with an animated AI collaborator, create and edit catalog objects through Meta, and check placement in code. Run the existing web app and open **http://127.0.0.1:3040/studio**. Local editing works without a key; AI editing uses the server's Meta API credentials. See [setup, demo and limits](docs/world-studio.md). This is a spatial editor, not a physics optimizer.
+
 ## Tests
 
 ```bash
@@ -259,6 +263,10 @@ training-guide case editor, competing-rule checks, disagreement and coverage
 questions, bounded revisions, reviewer attestation, frozen validation and guide
 exports were also built during the event.
 
+World Studio’s procedural 3D scene, avatar, object editor, placement validation,
+preview/recovery flow and Meta scene-editing integration were also built during
+the event. The maker’s market example and local parser are explicitly scripted.
+
 Third-party pieces we did not write:
 
 | Component | Used for |
@@ -267,6 +275,9 @@ Third-party pieces we did not write:
 | [`openai`](https://github.com/openai/openai-python) Python SDK | only as the client for Meta's OpenAI-compatible endpoint; no OpenAI models are used |
 | [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) | downloading Creative Commons clips (`fetch`) |
 | [`pytest`](https://pytest.org) | tests |
+| [Three.js](https://threejs.org) | World Studio WebGL rendering and camera controls |
+| Next.js, React, Zod and Lucide | Web framework, scene validation and interface icons |
+| tsx | Offline World Studio TypeScript tests |
 
 Any third-party video clip is credited from the attribution file `fetch` writes.
 
