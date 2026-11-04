@@ -87,7 +87,21 @@ export function createCarShow(env: Env) {
       .setY(anchor.y + bubbleHeight)
       .project(camera);
     const rect = env.renderer.domElement.getBoundingClientRect();
-    bubble.style.transform = `translate(${((projected.x + 1) / 2) * rect.width}px, ${((1 - projected.y) / 2) * rect.height}px) translate(-50%, -100%)`;
+    // Keep the bubble below the stage toolbar so its text is never covered.
+    const toolbar = document
+      .querySelector(".car-assembly-toolbar")
+      ?.getBoundingClientRect();
+    const minBottom =
+      (toolbar ? toolbar.bottom - rect.top + 10 : 0) + bubble.offsetHeight;
+    const x = Math.min(
+      Math.max(
+        ((projected.x + 1) / 2) * rect.width,
+        bubble.offsetWidth / 2 + 8,
+      ),
+      rect.width - bubble.offsetWidth / 2 - 8,
+    );
+    const y = Math.max(((1 - projected.y) / 2) * rect.height, minBottom);
+    bubble.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
     bubble.style.visibility = projected.z > 1 ? "hidden" : "";
   }
   function activeGroup(): THREE.Group | undefined {

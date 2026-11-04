@@ -400,6 +400,8 @@ export default function CarViewport(props: Props) {
         const dt = Math.min((time - lastTime) / 1000, 0.05);
         lastTime = time;
         showActive = show?.update(dt, time) || false;
+        // Measurement labels would clutter the assembly and the test track.
+        dimensions.visible = !showActive && !latest.current.drive;
         grid.position.x = Math.round(controls.target.x / 20) * 20;
         grid.position.z = Math.round(controls.target.z / 20) * 20;
         ground.position.x = controls.target.x;

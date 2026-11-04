@@ -822,3 +822,11 @@
   background: #fff;
   color: var(--ws-ink);
 }
+.ws-app
+  .car-assembly-toolbar
+  .car-drive-button:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: #000;
+}
+.ws-app .ev-candidate button:hover:not(:disabled) {
+  background: #2a421d;
+}

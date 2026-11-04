@@ -1575,6 +1575,7 @@
 }
 .ws-shop-button {
   display: flex;
+  white-space: nowrap;
   align-items: center;
   gap: 7px;
   height: 37px;
@@ -1673,4 +1674,16 @@
   font-weight: 400;
   color: var(--ws-muted);
   margin-right: 5px;
+}
+
+/* Dark buttons keep their colour on hover. The generic light hover above is
+   more specific than their own rules, which left white text on a light fill. */
+.ws-app .ws-shop-button:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: #000;
+}
+.ws-app .ws-conflict-actions button:first-child:hover:not(:disabled) {
+  background: #44321e;
+}
+.ws-app .ws-command button[type="submit"]:hover:not(:disabled) {
+  background: #243b1a;
 }
