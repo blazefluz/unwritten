@@ -1,4 +1,77 @@
-# Unwritten
+# World Studio
+
+**Build a shop with Muse. Check the layout. Test it with simulated shoppers.**
+
+Built by **Victor Akpomudje** ([blazefluz](https://github.com/blazefluz)) for the Meta Global AI Developer Hackathon, Indie Developer track, Build for Your World.
+
+World Studio is a shared 3D workspace with an embodied AI collaborator. Start with a shop photograph, let Meta Muse Spark propose fixtures and merchandise, then inspect and edit the resulting space. Code checks placement and simulates shoppers so you can explore a layout before changing a real store.
+
+[Public studio](https://unwritten-demo.onrender.com/studio) · [Car concept workbench](https://unwritten-demo.onrender.com/studio/car)
+
+**Hosted demo limits:** the latest UI is deployed, but live Muse editing and photo reconstruction are restricted by the public access guard. Run locally with a Meta API key for the full AI flow. Free hosting can take around a minute to wake up. Browser scenes are device-local; export backups.
+
+## Try it locally
+
+Requires Node.js 22+, Python 3.10+ and a browser with WebGL.
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+npm ci --prefix web
+```
+
+Create the gitignored `web/.env.local`:
+
+```dotenv
+MODEL_API_KEY=your_meta_model_api_key
+```
+
+```bash
+npm run dev
+```
+
+Open **http://127.0.0.1:3040/studio** and select **Meta · Muse Spark**. The server uses `.venv/bin/python`; set `UNWRITTEN_PYTHON` to override it. Keep keys server-side; never prefix them with `NEXT_PUBLIC_`. Local commands and direct editing work without AI access.
+
+## Photo → build → check → test
+
+1. Choose **Build from a photo** and upload a shop image you have rights to use.
+2. Inspect Muse's observations, uncertainty, custom fixtures and estimated product catalog.
+3. Review any placement conflicts. **Find space** attempts deterministic placement repair; unresolved proposals stay in preview.
+4. Select **Open shop** to run simulated shoppers through the store.
+5. Use **Ask Muse to improve** to send the results back, then compare using the same shopper seed.
+6. **Export scene** saves the layout, fixture definitions and catalog as JSON for reopening.
+
+Muse can define new fixture geometry rather than only select catalog objects. The scene engine independently validates structured proposals and checks floor footprints. Shopper navigation, purchases, checkout, stock and revenue are computed in code. Prices and inventory inferred from a photo are estimates; simulated purchases are not forecasts of real sales. No visits to a fixture does not by itself establish that it is unreachable.
+
+## What we tested
+
+- A blocked-entrance test went from **0/12 to 11/12 simulated purchases** after Muse moved one object, with no give-ups or geometry conflicts, using the same seed.
+- A supplied supermarket photo produced a **13-object mini-mart**. Code detected two overlaps; placement repair resolved them. A browser shop run completed with **12/12 purchases**, 26 items sold and no checkout failures. These are development tests of programmed behavior, not customer validation.
+- A non-shop app screenshot was recognized as such; Muse returned no construction actions.
+
+The experimental **car scene** supports editable body dimensions, an electric drivetrain, custom components, independent design bays, analytical packaging checks and up to three Muse design/check/revision attempts. A live test recorded a failed 2.15 m battery pack in a 2.00 m envelope, then increased wheelbase from 2.65 m to 2.80 m while preserving EV assumptions. The listed analytical checks passed. This is a concept workbench, not manufacturing-ready CAD or validated vehicle performance. Exact enclosure-clearance validation remains unfinished.
+
+## Architecture and verification
+
+- **Next.js + React:** editor, imports/exports and server routes.
+- **Three.js:** procedural world, custom geometry, avatar and camera controls.
+- **Meta Muse Spark (`muse-spark-1.3`):** image interpretation and structured design proposals through Meta Model API.
+- **Python MetaClient:** model calls through the Responses API with JSON-schema output. The `openai` SDK is only a client for `https://api.meta.ai/v1`; the product uses Meta models.
+- **TypeScript:** scene validation, placement repair, shopper simulation and EV calculations.
+
+```bash
+npm run test:studio --prefix web
+.venv/bin/python -m pytest -q
+npm run build
+npm run typecheck
+```
+
+Tests are offline unless explicitly named as opt-in live tests. Model response times vary; failed requests preserve the saved scene. Photo reconstruction is approximate and may require placement repair.
+
+## Earlier Unwritten workflows
+
+This repository began with video-based expert-rule learning. Those CLI and review tools remain available; their documentation follows. The submitted World Studio experience is at `/studio`.
+
 
 **Learn the rules nobody wrote down, by watching someone work.**
 
@@ -48,11 +121,7 @@ self-reported and results should be rerun against the original local snapshot.
 
 ### Next.js workspace
 
-**[Open the free public demo](https://unwritten-demo.onrender.com).** It replays
-an actual saved Meta analysis and includes a measured cable-study development
-example. Live video analysis requires a private submission code with six shared uses.
-Other server operations remain local-only; see [reviewer access](docs/reviewer-access.md). Free hosting can take about a minute to wake up after inactivity.
-See [deployment details](docs/deployment.md).
+The public World Studio demo and its access limits are described above. Earlier video-review access is documented in [reviewer access](docs/reviewer-access.md) and [deployment details](docs/deployment.md).
 
 ```bash
 npm ci --prefix web
@@ -267,11 +336,13 @@ World Studio’s procedural 3D scene, avatar, object editor, placement validatio
 preview/recovery flow and Meta scene-editing integration were also built during
 the event. The maker’s market example and local parser are explicitly scripted.
 
+Photo-to-store reconstruction, custom fixture designs, product catalogs, shopper simulation, the EV concept workbench and bounded analytical revision loop were built during the event as well.
+
 Third-party pieces we did not write:
 
 | Component | Used for |
 |---|---|
-| Muse Spark via Meta Model API | all perception and rule hypotheses |
+| Muse Spark via Meta Model API | image interpretation, scene proposals and rule hypotheses |
 | [`openai`](https://github.com/openai/openai-python) Python SDK | only as the client for Meta's OpenAI-compatible endpoint; no OpenAI models are used |
 | [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) | downloading Creative Commons clips (`fetch`) |
 | [`pytest`](https://pytest.org) | tests |
